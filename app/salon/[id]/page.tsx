@@ -12,6 +12,7 @@ import ResumenSemanal from "@/components/dashboard/ResumenSemanal";
 import BolsasSection from "@/components/dashboard/BolsasSection";
 import GraficasSection from "@/components/dashboard/GraficasSection";
 import TablaSection from "@/components/dashboard/TablaSection";
+import FadeIn from "@/components/motion/FadeIn";
 
 export default function SalonDashboard() {
   const params = useParams<{ id: string }>();
@@ -92,21 +93,27 @@ export default function SalonDashboard() {
 
   return (
     <main className="p-6 pb-10">
-      <DashboardHeader salon={salon} />
+      <FadeIn>
+        <DashboardHeader salon={salon} />
+      </FadeIn>
 
       {/* Error banner */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-card px-4 py-3 mb-4">
-          <p className="text-[13px] text-red-600 font-display">{error}</p>
-        </div>
+        <FadeIn delay={0.1}>
+          <div className="bg-red-50 border border-red-200 rounded-card px-4 py-3 mb-4">
+            <p className="text-[13px] text-red-600 font-display">{error}</p>
+          </div>
+        </FadeIn>
       )}
 
       {/* Tab navigation */}
-      <TabNav
-        active={activeTab}
-        onChange={setActiveTab}
-        salonColor={salon.color}
-      />
+      <FadeIn delay={0.15}>
+        <TabNav
+          active={activeTab}
+          onChange={setActiveTab}
+          salonColor={salon.color}
+        />
+      </FadeIn>
 
       {/* Tab content */}
       {loading ? (
@@ -120,7 +127,7 @@ export default function SalonDashboard() {
           <div className="skeleton h-32 w-full" />
         </div>
       ) : (
-        <>
+        <FadeIn delay={0.2} key={activeTab}>
           {activeTab === "resumen" && resumen && (
             <ResumenSemanal resumen={resumen} salonColor={salon.color} />
           )}
@@ -152,7 +159,7 @@ export default function SalonDashboard() {
               salonColor={salon.color}
             />
           )}
-        </>
+        </FadeIn>
       )}
     </main>
   );
