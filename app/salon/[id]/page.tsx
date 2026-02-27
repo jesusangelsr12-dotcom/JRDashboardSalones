@@ -11,6 +11,7 @@ import TabNav, { type TabId } from "@/components/dashboard/TabNav";
 import ResumenSemanal from "@/components/dashboard/ResumenSemanal";
 import BolsasSection from "@/components/dashboard/BolsasSection";
 import GraficasSection from "@/components/dashboard/GraficasSection";
+import TablaSection from "@/components/dashboard/TablaSection";
 
 export default function SalonDashboard() {
   const params = useParams<{ id: string }>();
@@ -145,11 +146,11 @@ export default function SalonDashboard() {
           )}
 
           {activeTab === "tabla" && (
-            <div className="flex items-center justify-center py-16">
-              <p className="text-sm text-text-secondary font-display">
-                Tabla — próximamente
-              </p>
-            </div>
+            <TablaSection
+              citas={citas}
+              gastos={gastos}
+              salonColor={salon.color}
+            />
           )}
         </>
       )}
