@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 
 export const metadata: Metadata = {
   title: "JR Consulting Dashboard",
@@ -33,6 +34,7 @@ export default function RootLayout({
       </head>
       <body>
         <div id="app-shell">{children}</div>
+        <ServiceWorkerRegister />
       </body>
     </html>
   );
