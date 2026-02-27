@@ -2,14 +2,15 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import type { Salon, Cita, Gasto, ResumenSemanal as ResumenType } from "@/lib/types";
+import type { Salon, Cita, Gasto, ResumenSemanal as ResumenType, DatosGraficas } from "@/lib/types";
 import { getSalon, getAcumulados } from "@/lib/store";
 import { fetchSalonData } from "@/lib/sheets";
-import { calcularResumenSemanal } from "@/lib/calculations";
+import { calcularResumenSemanal, calcularDatosGraficas } from "@/lib/calculations";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import TabNav, { type TabId } from "@/components/dashboard/TabNav";
 import ResumenSemanal from "@/components/dashboard/ResumenSemanal";
 import BolsasSection from "@/components/dashboard/BolsasSection";
+import GraficasSection from "@/components/dashboard/GraficasSection";
 
 export default function SalonDashboard() {
   const params = useParams<{ id: string }>();
@@ -17,6 +18,7 @@ export default function SalonDashboard() {
   const [citas, setCitas] = useState<Cita[]>([]);
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [resumen, setResumen] = useState<ResumenType | null>(null);
+  const [datosGraficas, setDatosGraficas] = useState<DatosGraficas | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("resumen");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +38,8 @@ export default function SalonDashboard() {
       const acumulados = getAcumulados(salon.id);
       const r = calcularResumenSemanal([], [], salon.bolsas, salon.gastosFijos, acumulados);
       setResumen(r);
+      const hoy = new Date();
+      setDatosGraficas(calcularDatosGraficas([], [], hoy.getFullYear(), hoy.getMonth()));
       setLoading(false);
       return;
     }
@@ -51,6 +55,8 @@ export default function SalonDashboard() {
       const acumulados = getAcumulados(salon.id);
       const r = calcularResumenSemanal(c, g, salon.bolsas, salon.gastosFijos, acumulados);
       setResumen(r);
+      const hoy = new Date();
+      setDatosGraficas(calcularDatosGraficas(c, g, hoy.getFullYear(), hoy.getMonth()));
     } catch (err) {
       setError("No se pudieron cargar los datos. Verifica el Sheet ID y la API key.");
       // Still calculate with empty data so UI renders
@@ -127,12 +133,15 @@ export default function SalonDashboard() {
             />
           )}
 
-          {activeTab === "graficas" && (
-            <div className="flex items-center justify-center py-16">
-              <p className="text-sm text-text-secondary font-display">
-                Gráficas — próximamente
-              </p>
-            </div>
+          {activeTab === "graficas" && datosGraficas && (
+            <GraficasSection
+              datos={datosGraficas}
+              salonColor={salon.color}
+              mesLabel={new Date().toLocaleDateString("es-MX", {
+                month: "long",
+                year: "numeric",
+              })}
+            />
           )}
 
           {activeTab === "tabla" && (
