@@ -9,6 +9,7 @@ import { calcularResumenSemanal } from "@/lib/calculations";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import TabNav, { type TabId } from "@/components/dashboard/TabNav";
 import ResumenSemanal from "@/components/dashboard/ResumenSemanal";
+import BolsasSection from "@/components/dashboard/BolsasSection";
 
 export default function SalonDashboard() {
   const params = useParams<{ id: string }>();
@@ -117,12 +118,13 @@ export default function SalonDashboard() {
             <ResumenSemanal resumen={resumen} salonColor={salon.color} />
           )}
 
-          {activeTab === "bolsas" && (
-            <div className="flex items-center justify-center py-16">
-              <p className="text-sm text-text-secondary font-display">
-                Bolsas — próximamente
-              </p>
-            </div>
+          {activeTab === "bolsas" && resumen && (
+            <BolsasSection
+              resumen={resumen}
+              salon={salon}
+              salonColor={salon.color}
+              onCierreCompleto={loadData}
+            />
           )}
 
           {activeTab === "graficas" && (
