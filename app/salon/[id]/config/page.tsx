@@ -24,6 +24,7 @@ export default function SalonConfigPage() {
   const [gastosFijos, setGastosFijos] = useState<GastoFijo[]>([]);
   const [bolsaDefaultGastosId, setBolsaDefaultGastosId] = useState<string | null>(null);
   const [showDelete, setShowDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -62,7 +63,14 @@ export default function SalonConfigPage() {
   };
 
   const handleDelete = async () => {
-    await deleteSalon(params.id);
+    if (deleting) return;
+    setDeleting(true);
+    const ok = await deleteSalon(params.id);
+    if (!ok) {
+      setDeleting(false);
+      alert("Error al eliminar el salón. Intenta de nuevo.");
+      return;
+    }
     router.push("/");
   };
 
@@ -421,9 +429,10 @@ export default function SalonConfigPage() {
           </button>
           <button
             onClick={handleDelete}
-            className="flex-1 py-3 rounded-card bg-red-500 text-[14px] font-display font-semibold text-white active:scale-[0.98] transition-transform"
+            disabled={deleting}
+            className="flex-1 py-3 rounded-card bg-red-500 text-[14px] font-display font-semibold text-white active:scale-[0.98] transition-transform disabled:opacity-50"
           >
-            Eliminar
+            {deleting ? "Eliminando..." : "Eliminar"}
           </button>
         </div>
       </Modal>

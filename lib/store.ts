@@ -198,9 +198,23 @@ export async function updateSalon(updated: Salon): Promise<void> {
   }
 }
 
-export async function deleteSalon(id: string): Promise<void> {
-  // CASCADE se encarga de bolsas, gastos_fijos, cierres y gastos_admin
-  await supabase.from("salones").delete().eq("id", id);
+export async function deleteSalon(id: string): Promise<boolean> {
+  // Primero quitar la FK de bolsa_default_gastos_id para que CASCADE no falle
+  await supabase.from("salones").update({ bolsa_default_gastos_id: null }).eq("id", id);
+
+  // Borrar hijos explícitamente en orden correcto (no depender solo de CASCADE)
+  await supabase.from("movimientos_bolsa").delete().eq("salon_id", id);
+  await supabase.from("gastos_admin").delete().eq("salon_id", id);
+  await supabase.from("cierres").delete().eq("salon_id", id);
+  await supabase.from("gastos_fijos").delete().eq("salon_id", id);
+  await supabase.from("bolsas").delete().eq("salon_id", id);
+
+  const { error } = await supabase.from("salones").delete().eq("id", id);
+  if (error) {
+    console.error("Error deleting salon:", error);
+    return false;
+  }
+  return true;
 }
 
 // ── Acumulados de bolsas ──
@@ -453,41 +467,25 @@ export function crearBolsasPlantilla(): Bolsa[] {
   ];
 }
 
-// ── Deduplicar salones: elimina duplicados por nombre, conserva el más antiguo ──
+// ── Seed data: Salones iniciales ──
+// NOTA: Solo se ejecuta si la tabla "salones" está completamente vacía.
+// Se usa un flag en localStorage para evitar re-seedear después de que
+// el usuario borra todos sus salones intencionalmente.
 
-async function deduplicarSalones(): Promise<void> {
-  const { data: allSalones, error } = await supabase
-    .from("salones")
-    .select("id, nombre, created_at")
-    .order("created_at", { ascending: true });
+const SEEDED_KEY = "jr_salones_seeded";
 
-  if (error || !allSalones) return;
-
-  const seen = new Map<string, string>();
-  const idsToDelete: string[] = [];
-
-  for (const s of allSalones) {
-    if (seen.has(s.nombre)) {
-      idsToDelete.push(s.id);
-    } else {
-      seen.set(s.nombre, s.id);
-    }
+async function seedSalonesIfEmpty(): Promise<Salon[]> {
+  // Si ya se hizo seed antes (incluso si el usuario borró todo), no volver a seedear
+  if (typeof window !== "undefined" && localStorage.getItem(SEEDED_KEY)) {
+    return [];
   }
 
-  if (idsToDelete.length === 0) return;
+  // Verificar que la BD realmente esté vacía
+  const { count, error } = await supabase
+    .from("salones")
+    .select("id", { count: "exact", head: true });
 
-  // Borrar bolsas y gastos_fijos asociados, luego los salones duplicados
-  await supabase.from("bolsas").delete().in("salon_id", idsToDelete);
-  await supabase.from("gastos_fijos").delete().in("salon_id", idsToDelete);
-  await supabase.from("salones").delete().in("id", idsToDelete);
-}
-
-// ── Seed data: Salones iniciales ──
-
-export async function seedSalones(): Promise<Salon[]> {
-  // Double-check: otra pestaña/dispositivo pudo haber insertado mientras tanto
-  const { salones: existing } = await getSalones();
-  if (existing.length > 0) return existing;
+  if (error || (count ?? 0) > 0) return [];
 
   const salones: Salon[] = [
     {
@@ -497,24 +495,9 @@ export async function seedSalones(): Promise<Salon[]> {
       sheetId: "TU_SHEET_ID_AQUI",
       bolsas: crearBolsasPlantilla(),
       gastosFijos: [
-        {
-          id: uuidv4(),
-          nombre: "Renta",
-          monto: 8000,
-          frecuencia: "mensual",
-        },
-        {
-          id: uuidv4(),
-          nombre: "Luz",
-          monto: 1500,
-          frecuencia: "mensual",
-        },
-        {
-          id: uuidv4(),
-          nombre: "Internet",
-          monto: 600,
-          frecuencia: "mensual",
-        },
+        { id: uuidv4(), nombre: "Renta", monto: 8000, frecuencia: "mensual" },
+        { id: uuidv4(), nombre: "Luz", monto: 1500, frecuencia: "mensual" },
+        { id: uuidv4(), nombre: "Internet", monto: 600, frecuencia: "mensual" },
       ],
       bolsaDefaultGastosId: null,
       createdAt: new Date().toISOString(),
@@ -525,48 +508,14 @@ export async function seedSalones(): Promise<Salon[]> {
       color: "#059669",
       sheetId: "TU_SHEET_ID_2_AQUI",
       bolsas: [
-        {
-          id: uuidv4(),
-          nombre: "Operación",
-          porcentaje: 50,
-          color: "#8B5CF6",
-          acumulado: 0,
-        },
-        {
-          id: uuidv4(),
-          nombre: "Nómina",
-          porcentaje: 25,
-          color: "#EC4899",
-          acumulado: 0,
-        },
-        {
-          id: uuidv4(),
-          nombre: "Reserva",
-          porcentaje: 15,
-          color: "#14B8A6",
-          acumulado: 0,
-        },
-        {
-          id: uuidv4(),
-          nombre: "Administración JR",
-          porcentaje: 10,
-          color: "#F97316",
-          acumulado: 0,
-        },
+        { id: uuidv4(), nombre: "Operación", porcentaje: 50, color: "#8B5CF6", acumulado: 0 },
+        { id: uuidv4(), nombre: "Nómina", porcentaje: 25, color: "#EC4899", acumulado: 0 },
+        { id: uuidv4(), nombre: "Reserva", porcentaje: 15, color: "#14B8A6", acumulado: 0 },
+        { id: uuidv4(), nombre: "Administración JR", porcentaje: 10, color: "#F97316", acumulado: 0 },
       ],
       gastosFijos: [
-        {
-          id: uuidv4(),
-          nombre: "Renta",
-          monto: 12000,
-          frecuencia: "mensual",
-        },
-        {
-          id: uuidv4(),
-          nombre: "Agua",
-          monto: 400,
-          frecuencia: "mensual",
-        },
+        { id: uuidv4(), nombre: "Renta", monto: 12000, frecuencia: "mensual" },
+        { id: uuidv4(), nombre: "Agua", monto: 400, frecuencia: "mensual" },
       ],
       bolsaDefaultGastosId: null,
       createdAt: new Date().toISOString(),
@@ -577,26 +526,60 @@ export async function seedSalones(): Promise<Salon[]> {
     await addSalon(salon);
   }
 
+  // Marcar que ya se hizo seed para no repetir
+  if (typeof window !== "undefined") {
+    localStorage.setItem(SEEDED_KEY, "1");
+  }
+
   return salones;
 }
 
-// ── Inicializar store ──
+// ── Deduplicar salones: elimina duplicados por nombre, conserva el más antiguo ──
 
-let _initPromise: Promise<Salon[]> | null = null;
+async function deduplicarSalones(): Promise<void> {
+  const { data: rows, error } = await supabase
+    .from("salones")
+    .select("id, nombre, created_at")
+    .order("created_at", { ascending: true });
 
-export function initStore(): Promise<Salon[]> {
-  if (!_initPromise) {
-    _initPromise = _doInitStore();
+  if (error || !rows) return;
+
+  const seen = new Map<string, string>();
+  const idsToDelete: string[] = [];
+
+  for (const s of rows) {
+    if (seen.has(s.nombre)) {
+      idsToDelete.push(s.id);
+    } else {
+      seen.set(s.nombre, s.id);
+    }
   }
-  return _initPromise;
+
+  if (idsToDelete.length === 0) return;
+
+  // CASCADE debería limpiar hijos, pero por seguridad borramos explícitamente
+  await supabase.from("movimientos_bolsa").delete().in("salon_id", idsToDelete);
+  await supabase.from("gastos_admin").delete().in("salon_id", idsToDelete);
+  await supabase.from("cierres").delete().in("salon_id", idsToDelete);
+  await supabase.from("gastos_fijos").delete().in("salon_id", idsToDelete);
+  await supabase.from("bolsas").delete().in("salon_id", idsToDelete);
+  await supabase.from("salones").delete().in("id", idsToDelete);
 }
 
-async function _doInitStore(): Promise<Salon[]> {
+// ── Inicializar store ──
+// SIEMPRE lee datos frescos de la BD. No cachea.
+
+export async function initStore(): Promise<Salon[]> {
   const { salones, error } = await getSalones();
   if (error) return [];
 
+  // Si hay salones, limpiar duplicados si es necesario y devolver
   if (salones.length > 0) {
-    // Limpiar duplicados si existen (self-healing)
+    // Marcar que ya existe data (para no re-seedear si se borran después)
+    if (typeof window !== "undefined") {
+      localStorage.setItem(SEEDED_KEY, "1");
+    }
+
     const nombres = salones.map((s) => s.nombre);
     if (new Set(nombres).size < nombres.length) {
       await deduplicarSalones();
@@ -606,5 +589,6 @@ async function _doInitStore(): Promise<Salon[]> {
     return salones;
   }
 
-  return seedSalones();
+  // BD vacía: intentar seed solo la primera vez
+  return seedSalonesIfEmpty();
 }
