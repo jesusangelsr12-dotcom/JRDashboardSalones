@@ -11,6 +11,7 @@ create table salones (
   nombre text not null,
   color text not null default '#2563EB',
   sheet_id text not null default '',
+  bolsa_default_gastos_id uuid,
   created_at timestamptz not null default now()
 );
 
@@ -48,13 +49,31 @@ create table cierres (
   created_at timestamptz not null default now()
 );
 
--- 5. Índices para queries frecuentes
+-- 5. Tabla de gastos registrados desde la app de admin
+create table gastos_admin (
+  id uuid primary key default gen_random_uuid(),
+  salon_id uuid not null references salones(id) on delete cascade,
+  fecha date not null,
+  descripcion text not null,
+  monto numeric not null,
+  metodo_pago text not null default 'Efectivo',
+  bolsa_id uuid references bolsas(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+-- 6. Índices para queries frecuentes
 create index idx_bolsas_salon on bolsas(salon_id);
 create index idx_gastos_fijos_salon on gastos_fijos(salon_id);
 create index idx_cierres_salon on cierres(salon_id);
 create index idx_cierres_semana on cierres(salon_id, semana_inicio);
+create index idx_gastos_admin_salon on gastos_admin(salon_id);
 
--- 6. RLS deshabilitado por ahora (solo tú usas la app)
+-- 7. FK de bolsa_default_gastos_id (after bolsas table exists)
+alter table salones
+  add constraint fk_bolsa_default_gastos
+  foreign key (bolsa_default_gastos_id) references bolsas(id) on delete set null;
+
+-- 8. RLS deshabilitado por ahora (solo tú usas la app)
 --    Cuando agregues auth, habilita RLS y crea policies:
 --    alter table salones enable row level security;
 --    create policy "Users can manage their salones" on salones

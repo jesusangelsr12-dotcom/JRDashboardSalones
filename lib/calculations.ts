@@ -3,8 +3,10 @@ import type {
   Gasto,
   Bolsa,
   GastoFijo,
+  CierreSemana,
   ResumenSemanal,
   DatosGraficas,
+  SemanaDetectada,
 } from "./types";
 
 // ── Helpers de fechas ──
@@ -73,13 +75,16 @@ export function formatMoneyFull(amount: number): string {
 }
 
 // ── Resumen Semanal ──
+// CAMBIO: libre = ingresos - gastosFijos (gastos variables NO restan de ingresos)
+// Los gastos variables restan a la bolsa asignada
 
 export function calcularResumenSemanal(
   citas: Cita[],
   gastos: Gasto[],
   bolsas: Bolsa[],
   gastosFijos: GastoFijo[],
-  acumulados: Record<string, number>
+  acumulados: Record<string, number>,
+  bolsaDefaultGastosId: string | null
 ): ResumenSemanal {
   const hoy = new Date();
   const lunesSemana = getLunesDeSemana(hoy);
@@ -92,7 +97,7 @@ export function calcularResumenSemanal(
   // Ingresos
   const ingresos = citasSemana.reduce((sum, c) => sum + c.costo, 0);
 
-  // Gastos variables
+  // Gastos variables (solo para info, NO restan de libre)
   const gastosVariables = gastosSemana.reduce((sum, g) => sum + g.monto, 0);
 
   // Gastos fijos semanales (mensual / 4)
@@ -100,13 +105,23 @@ export function calcularResumenSemanal(
     return sum + (gf.frecuencia === "semanal" ? gf.monto : gf.monto / 4);
   }, 0);
 
-  const totalGastos = gastosVariables + gastosFijosSemana;
+  // NUEVO: libre = ingresos - gastosFijos solamente
+  const totalGastos = gastosFijosSemana;
   const libre = ingresos - totalGastos;
 
   // Desglose por método de pago
   const porMetodo = { Efectivo: 0, Tarjeta: 0, Transferencia: 0 };
   citasSemana.forEach((c) => {
     porMetodo[c.metodoPago] += c.costo;
+  });
+
+  // Calcular gastos asignados a cada bolsa
+  const gastosPorBolsa: Record<string, number> = {};
+  gastosSemana.forEach((g) => {
+    const targetBolsa = g.bolsaId || bolsaDefaultGastosId;
+    if (targetBolsa) {
+      gastosPorBolsa[targetBolsa] = (gastosPorBolsa[targetBolsa] || 0) + g.monto;
+    }
   });
 
   // Bolsas
@@ -117,6 +132,7 @@ export function calcularResumenSemanal(
     color: b.color,
     montoSemana: libre > 0 ? libre * (b.porcentaje / 100) : 0,
     acumulado: acumulados[b.id] || 0,
+    gastosAsignados: gastosPorBolsa[b.id] || 0,
   }));
 
   return {
@@ -128,6 +144,92 @@ export function calcularResumenSemanal(
     porMetodo,
     bolsas: bolsasCalc,
   };
+}
+
+// ── Resumen para una semana específica ──
+
+export function calcularResumenParaSemana(
+  citas: Cita[],
+  gastos: Gasto[],
+  gastosFijos: GastoFijo[],
+  lunesISO: string,
+  domingoISO: string,
+  bolsaDefaultGastosId: string | null
+): { ingresos: number; gastosVariables: number; gastosFijos: number; libre: number; gastosPorBolsa: Record<string, number> } {
+  const inicio = new Date(lunesISO + "T00:00:00");
+  const fin = new Date(domingoISO + "T23:59:59.999");
+
+  const citasSemana = enRango(citas, inicio, fin);
+  const gastosSemana = enRango(gastos, inicio, fin);
+
+  const ingresos = citasSemana.reduce((sum, c) => sum + c.costo, 0);
+  const gastosVariables = gastosSemana.reduce((sum, g) => sum + g.monto, 0);
+  const gastosFijosSemana = gastosFijos.reduce((sum, gf) => {
+    return sum + (gf.frecuencia === "semanal" ? gf.monto : gf.monto / 4);
+  }, 0);
+  const libre = ingresos - gastosFijosSemana;
+
+  const gastosPorBolsa: Record<string, number> = {};
+  gastosSemana.forEach((g) => {
+    const targetBolsa = g.bolsaId || bolsaDefaultGastosId;
+    if (targetBolsa) {
+      gastosPorBolsa[targetBolsa] = (gastosPorBolsa[targetBolsa] || 0) + g.monto;
+    }
+  });
+
+  return { ingresos, gastosVariables, gastosFijos: gastosFijosSemana, libre, gastosPorBolsa };
+}
+
+// ── Detectar semanas con datos ──
+
+export function detectarSemanas(
+  citas: Cita[],
+  gastos: Gasto[],
+  gastosFijos: GastoFijo[],
+  cierres: CierreSemana[],
+  bolsaDefaultGastosId: string | null
+): SemanaDetectada[] {
+  const semanasSet = new Set<string>();
+
+  // Recopilar todas las semanas que tienen transacciones
+  [...citas, ...gastos].forEach((item) => {
+    const lunes = getLunesDeSemana(item.fecha);
+    const key = lunes.toISOString().split("T")[0];
+    semanasSet.add(key);
+  });
+
+  // También agregar la semana actual
+  const hoy = new Date();
+  const lunesActual = getLunesDeSemana(hoy);
+  semanasSet.add(lunesActual.toISOString().split("T")[0]);
+
+  const cierresSet = new Set(cierres.map((c) => c.semanaInicio));
+
+  const semanas: SemanaDetectada[] = Array.from(semanasSet)
+    .sort()
+    .map((lunesISO) => {
+      const lunes = new Date(lunesISO + "T00:00:00");
+      const domingo = new Date(lunes);
+      domingo.setDate(domingo.getDate() + 6);
+      const domingoISO = domingo.toISOString().split("T")[0];
+
+      const datos = calcularResumenParaSemana(
+        citas, gastos, gastosFijos, lunesISO, domingoISO, bolsaDefaultGastosId
+      );
+
+      return {
+        semanaInicio: lunesISO,
+        semanaFin: domingoISO,
+        label: `${fechaCorta(lunes)} — ${fechaCorta(domingo)}`,
+        ingresos: datos.ingresos,
+        gastosVariables: datos.gastosVariables,
+        gastosFijos: datos.gastosFijos,
+        libre: datos.libre,
+        cerrada: cierresSet.has(lunesISO),
+      };
+    });
+
+  return semanas;
 }
 
 // ── Ingresos del mes (para KPI en Home) ──
@@ -142,7 +244,7 @@ export function calcularIngresosMes(
   return enRango(citas, inicio, fin).reduce((sum, c) => sum + c.costo, 0);
 }
 
-// ── Datos para gráficas ──
+// ── Datos para gráficas (mes específico) ──
 
 export function calcularDatosGraficas(
   citas: Cita[],
@@ -154,11 +256,37 @@ export function calcularDatosGraficas(
   const finMes = getFinMes(year, month);
 
   const citasMes = enRango(citas, inicioMes, finMes);
-  const _gastosMes = enRango(gastos, inicioMes, finMes);
+  const gastosMes = enRango(gastos, inicioMes, finMes);
 
-  // ── Ingresos por semana del mes ──
+  return _calcularGraficasInternas(citas, citasMes, gastosMes, year, month);
+}
+
+// ── Datos para gráficas (año completo) ──
+
+export function calcularDatosGraficasAnual(
+  citas: Cita[],
+  gastos: Gasto[],
+  year: number
+): DatosGraficas {
+  const inicio = new Date(year, 0, 1, 0, 0, 0, 0);
+  const fin = new Date(year, 11, 31, 23, 59, 59, 999);
+
+  const citasAnio = enRango(citas, inicio, fin);
+  const gastosAnio = enRango(gastos, inicio, fin);
+
+  return _calcularGraficasInternas(citas, citasAnio, gastosAnio, year, new Date().getMonth());
+}
+
+function _calcularGraficasInternas(
+  allCitas: Cita[],
+  citasFiltradas: Cita[],
+  gastosFiltrados: Gasto[],
+  year: number,
+  month: number
+): DatosGraficas {
+  // ── Ingresos por semana ──
   const semanaMap = new Map<string, number>();
-  citasMes.forEach((c) => {
+  citasFiltradas.forEach((c) => {
     const lunes = getLunesDeSemana(c.fecha);
     const key = `${lunes.getDate()}/${lunes.getMonth() + 1}`;
     semanaMap.set(key, (semanaMap.get(key) || 0) + c.costo);
@@ -173,7 +301,7 @@ export function calcularDatosGraficas(
 
   // ── Top 10 servicios ──
   const servicioMap = new Map<string, { cantidad: number; total: number }>();
-  citasMes.forEach((c) => {
+  citasFiltradas.forEach((c) => {
     c.servicios
       .filter((s) => s.tipo === "servicio")
       .forEach((s) => {
@@ -191,7 +319,7 @@ export function calcularDatosGraficas(
 
   // ── Top 10 productos ──
   const productoMap = new Map<string, { cantidad: number; total: number }>();
-  citasMes.forEach((c) => {
+  citasFiltradas.forEach((c) => {
     c.servicios
       .filter((s) => s.tipo === "producto")
       .forEach((s) => {
@@ -209,7 +337,7 @@ export function calcularDatosGraficas(
 
   // ── Top 10 clientas por número de citas ──
   const clientaCitasMap = new Map<string, number>();
-  citasMes.forEach((c) => {
+  citasFiltradas.forEach((c) => {
     clientaCitasMap.set(c.clienta, (clientaCitasMap.get(c.clienta) || 0) + 1);
   });
   const topClientasPorCitas = Array.from(clientaCitasMap.entries())
@@ -219,7 +347,7 @@ export function calcularDatosGraficas(
 
   // ── Top 10 clientas por dinero gastado ──
   const clientaGastoMap = new Map<string, number>();
-  citasMes.forEach((c) => {
+  citasFiltradas.forEach((c) => {
     clientaGastoMap.set(
       c.clienta,
       (clientaGastoMap.get(c.clienta) || 0) + c.costo
@@ -232,7 +360,7 @@ export function calcularDatosGraficas(
 
   // ── Distribución por método de pago ──
   const metodoMap = new Map<string, number>();
-  citasMes.forEach((c) => {
+  citasFiltradas.forEach((c) => {
     metodoMap.set(c.metodoPago, (metodoMap.get(c.metodoPago) || 0) + c.costo);
   });
   const distribucionMetodo = Array.from(metodoMap.entries())
@@ -245,7 +373,7 @@ export function calcularDatosGraficas(
     const d = new Date(year, month - i, 1);
     const mInicio = getInicioMes(d.getFullYear(), d.getMonth());
     const mFin = getFinMes(d.getFullYear(), d.getMonth());
-    const total = enRango(citas, mInicio, mFin).reduce(
+    const total = enRango(allCitas, mInicio, mFin).reduce(
       (sum, c) => sum + c.costo,
       0
     );
@@ -256,6 +384,21 @@ export function calcularDatosGraficas(
     evolucionMensual.push({ mes: mesLabel, total });
   }
 
+  // ── Top 10 gastos ──
+  const gastoDescMap = new Map<string, { cantidad: number; total: number }>();
+  gastosFiltrados.forEach((g) => {
+    const desc = g.descripcion.trim();
+    const current = gastoDescMap.get(desc) || { cantidad: 0, total: 0 };
+    gastoDescMap.set(desc, {
+      cantidad: current.cantidad + 1,
+      total: current.total + g.monto,
+    });
+  });
+  const topGastos = Array.from(gastoDescMap.entries())
+    .map(([descripcion, data]) => ({ descripcion, ...data }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 10);
+
   return {
     ingresosPorSemana,
     topServicios,
@@ -264,6 +407,7 @@ export function calcularDatosGraficas(
     topClientasPorGasto,
     distribucionMetodo,
     evolucionMensual,
+    topGastos,
   };
 }
 
@@ -284,11 +428,12 @@ export function rangoSemanaActual(): { inicio: string; fin: string; label: strin
 // ── Meses disponibles a partir de los datos ──
 
 export function mesesDisponibles(
-  citas: Cita[]
+  citas: Cita[],
+  gastos: Gasto[]
 ): { year: number; month: number; label: string }[] {
   const meses = new Set<string>();
-  citas.forEach((c) => {
-    const key = `${c.fecha.getFullYear()}-${c.fecha.getMonth()}`;
+  [...citas, ...gastos].forEach((item) => {
+    const key = `${item.fecha.getFullYear()}-${item.fecha.getMonth()}`;
     meses.add(key);
   });
 
@@ -311,7 +456,21 @@ export function mesesDisponibles(
       };
     })
     .sort((a, b) => {
-      if (a.year !== b.year) return b.year - a.year;
-      return b.month - a.month;
+      if (a.year !== b.year) return a.year - b.year;
+      return a.month - b.month;
     });
+}
+
+// ── Años disponibles ──
+
+export function aniosDisponibles(
+  citas: Cita[],
+  gastos: Gasto[]
+): number[] {
+  const years = new Set<number>();
+  [...citas, ...gastos].forEach((item) => {
+    years.add(item.fecha.getFullYear());
+  });
+  years.add(new Date().getFullYear());
+  return Array.from(years).sort();
 }

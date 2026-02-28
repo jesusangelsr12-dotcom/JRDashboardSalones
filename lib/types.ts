@@ -7,6 +7,7 @@ export interface Salon {
   sheetId: string;
   bolsas: Bolsa[];
   gastosFijos: GastoFijo[];
+  bolsaDefaultGastosId: string | null;
   createdAt: string;
 }
 
@@ -67,9 +68,25 @@ export interface Gasto {
   descripcion: string;
   monto: number;
   metodoPago: MetodoPago;
+  bolsaId?: string | null;
+  source?: "sheets" | "admin";
+  adminId?: string;
 }
 
 export type MetodoPago = "Efectivo" | "Tarjeta" | "Transferencia";
+
+// ── Gasto registrado desde la app de admin ──
+
+export interface GastoAdmin {
+  id: string;
+  salonId: string;
+  fecha: string; // ISO date
+  descripcion: string;
+  monto: number;
+  metodoPago: MetodoPago;
+  bolsaId: string | null;
+  createdAt: string;
+}
 
 // ── Cierre de semana ──
 
@@ -107,7 +124,21 @@ export interface ResumenSemanal {
     color: string;
     montoSemana: number;
     acumulado: number;
+    gastosAsignados: number;
   }[];
+}
+
+// ── Semana detectada ──
+
+export interface SemanaDetectada {
+  semanaInicio: string; // ISO date lunes
+  semanaFin: string;    // ISO date domingo
+  label: string;
+  ingresos: number;
+  gastosVariables: number;
+  gastosFijos: number;
+  libre: number;
+  cerrada: boolean;
 }
 
 // ── Datos para gráficas ──
@@ -120,4 +151,5 @@ export interface DatosGraficas {
   topClientasPorGasto: { nombre: string; total: number }[];
   distribucionMetodo: { metodo: string; total: number }[];
   evolucionMensual: { mes: string; total: number }[];
+  topGastos: { descripcion: string; cantidad: number; total: number }[];
 }

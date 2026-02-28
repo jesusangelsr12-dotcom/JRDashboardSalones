@@ -31,6 +31,7 @@ export default function NuevoSalonPage() {
       sheetId: sheetId.trim(),
       bolsas: crearBolsasPlantilla(),
       gastosFijos: [],
+      bolsaDefaultGastosId: null,
       createdAt: new Date().toISOString(),
     };
 

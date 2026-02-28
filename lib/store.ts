@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "./supabase";
-import type { Salon, Bolsa, GastoFijo, CierreSemana } from "./types";
+import type { Salon, Bolsa, GastoFijo, CierreSemana, GastoAdmin, MetodoPago } from "./types";
 
 // ── Helpers: mapear filas de Supabase → tipos de la app ──
 
@@ -9,6 +9,7 @@ interface SalonRow {
   nombre: string;
   color: string;
   sheet_id: string;
+  bolsa_default_gastos_id: string | null;
   created_at: string;
   bolsas: BolsaRow[];
   gastos_fijos: GastoFijoRow[];
@@ -37,6 +38,7 @@ function mapSalon(row: SalonRow): Salon {
     nombre: row.nombre,
     color: row.color,
     sheetId: row.sheet_id,
+    bolsaDefaultGastosId: row.bolsa_default_gastos_id || null,
     bolsas: (row.bolsas || []).map((b) => ({
       id: b.id,
       nombre: b.nombre,
@@ -88,6 +90,7 @@ export async function addSalon(salon: Salon): Promise<void> {
     nombre: salon.nombre,
     color: salon.color,
     sheet_id: salon.sheetId,
+    bolsa_default_gastos_id: salon.bolsaDefaultGastosId,
     created_at: salon.createdAt,
   });
 
@@ -134,6 +137,7 @@ export async function updateSalon(updated: Salon): Promise<void> {
       nombre: updated.nombre,
       color: updated.color,
       sheet_id: updated.sheetId,
+      bolsa_default_gastos_id: updated.bolsaDefaultGastosId,
     })
     .eq("id", updated.id);
 
@@ -168,7 +172,7 @@ export async function updateSalon(updated: Salon): Promise<void> {
 }
 
 export async function deleteSalon(id: string): Promise<void> {
-  // CASCADE se encarga de bolsas, gastos_fijos y cierres
+  // CASCADE se encarga de bolsas, gastos_fijos, cierres y gastos_admin
   await supabase.from("salones").delete().eq("id", id);
 }
 
@@ -244,6 +248,59 @@ export async function addCierre(
   });
 }
 
+// ── Gastos Admin CRUD ──
+
+export async function getGastosAdmin(salonId: string): Promise<GastoAdmin[]> {
+  const { data, error } = await supabase
+    .from("gastos_admin")
+    .select("*")
+    .eq("salon_id", salonId)
+    .order("fecha", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching gastos admin:", error);
+    return [];
+  }
+
+  return (
+    data?.map((g) => ({
+      id: g.id,
+      salonId: g.salon_id,
+      fecha: g.fecha,
+      descripcion: g.descripcion,
+      monto: g.monto,
+      metodoPago: g.metodo_pago as MetodoPago,
+      bolsaId: g.bolsa_id,
+      createdAt: g.created_at,
+    })) ?? []
+  );
+}
+
+export async function addGastoAdmin(
+  salonId: string,
+  gasto: {
+    descripcion: string;
+    monto: number;
+    metodoPago: MetodoPago;
+    fecha: string;
+    bolsaId: string | null;
+  }
+): Promise<void> {
+  const { error } = await supabase.from("gastos_admin").insert({
+    salon_id: salonId,
+    descripcion: gasto.descripcion,
+    monto: gasto.monto,
+    metodo_pago: gasto.metodoPago,
+    fecha: gasto.fecha,
+    bolsa_id: gasto.bolsaId,
+  });
+  if (error) console.error("Error adding gasto admin:", error);
+}
+
+export async function deleteGastoAdmin(id: string): Promise<void> {
+  await supabase.from("gastos_admin").delete().eq("id", id);
+}
+
 // ── Seed data: Bolsas plantilla ──
 
 export function crearBolsasPlantilla(): Bolsa[] {
@@ -309,6 +366,7 @@ export async function seedSalones(): Promise<Salon[]> {
           frecuencia: "mensual",
         },
       ],
+      bolsaDefaultGastosId: null,
       createdAt: new Date().toISOString(),
     },
     {
@@ -360,6 +418,7 @@ export async function seedSalones(): Promise<Salon[]> {
           frecuencia: "mensual",
         },
       ],
+      bolsaDefaultGastosId: null,
       createdAt: new Date().toISOString(),
     },
   ];

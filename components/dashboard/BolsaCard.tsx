@@ -8,6 +8,7 @@ interface BolsaCardProps {
   color: string;
   montoSemana: number;
   acumulado: number;
+  gastosAsignados?: number;
 }
 
 export default function BolsaCard({
@@ -16,6 +17,7 @@ export default function BolsaCard({
   color,
   montoSemana,
   acumulado,
+  gastosAsignados = 0,
 }: BolsaCardProps) {
   return (
     <div className="relative overflow-hidden bg-surface rounded-card border border-border p-4">
@@ -48,7 +50,7 @@ export default function BolsaCard({
       </div>
 
       {/* Amounts */}
-      <div className="grid grid-cols-2 gap-3 ml-2">
+      <div className={`grid gap-3 ml-2 ${gastosAsignados > 0 ? "grid-cols-3" : "grid-cols-2"}`}>
         <div>
           <p className="text-[10px] uppercase tracking-[0.06em] text-text-secondary font-display mb-0.5">
             Esta semana
@@ -65,6 +67,16 @@ export default function BolsaCard({
             {formatMoney(acumulado)}
           </p>
         </div>
+        {gastosAsignados > 0 && (
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.06em] text-text-secondary font-display mb-0.5">
+              Gastos
+            </p>
+            <p className="font-numbers text-lg font-medium leading-tight text-red-500">
+              -{formatMoney(gastosAsignados)}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Subtle fill indicator */}

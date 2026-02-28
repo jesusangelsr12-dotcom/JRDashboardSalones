@@ -2,16 +2,19 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import type { Salon, Cita, Gasto, ResumenSemanal as ResumenType, DatosGraficas } from "@/lib/types";
-import { getSalon, getAcumulados } from "@/lib/store";
+import type { Salon, Cita, Gasto, GastoAdmin, ResumenSemanal as ResumenType } from "@/lib/types";
+import { getSalon, getAcumulados, getGastosAdmin } from "@/lib/store";
 import { fetchSalonData } from "@/lib/sheets";
-import { calcularResumenSemanal, calcularDatosGraficas } from "@/lib/calculations";
+import { calcularResumenSemanal } from "@/lib/calculations";
+import { exportarDatosXlsx } from "@/lib/exportXlsx";
+import { getCierres } from "@/lib/store";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import TabNav, { type TabId } from "@/components/dashboard/TabNav";
 import ResumenSemanal from "@/components/dashboard/ResumenSemanal";
 import BolsasSection from "@/components/dashboard/BolsasSection";
 import GraficasSection from "@/components/dashboard/GraficasSection";
 import TablaSection from "@/components/dashboard/TablaSection";
+import GastoAdminModal from "@/components/dashboard/GastoAdminModal";
 import FadeIn from "@/components/motion/FadeIn";
 
 export default function SalonDashboard() {
@@ -20,10 +23,10 @@ export default function SalonDashboard() {
   const [citas, setCitas] = useState<Cita[]>([]);
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [resumen, setResumen] = useState<ResumenType | null>(null);
-  const [datosGraficas, setDatosGraficas] = useState<DatosGraficas | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("resumen");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showGastoModal, setShowGastoModal] = useState(false);
 
   // Load salon from store
   useEffect(() => {
@@ -34,39 +37,65 @@ export default function SalonDashboard() {
     load();
   }, [params.id]);
 
-  // Fetch data from Sheets
+  // Fetch data from Sheets + admin gastos
   const loadData = useCallback(async () => {
     if (!salon) return;
-
-    // Skip fetch for placeholder sheet IDs
-    if (!salon.sheetId || salon.sheetId.startsWith("TU_SHEET_ID")) {
-      const acumulados = await getAcumulados(salon.id);
-      const r = calcularResumenSemanal([], [], salon.bolsas, salon.gastosFijos, acumulados);
-      setResumen(r);
-      const hoy = new Date();
-      setDatosGraficas(calcularDatosGraficas([], [], hoy.getFullYear(), hoy.getMonth()));
-      setLoading(false);
-      return;
-    }
 
     setLoading(true);
     setError(null);
 
     try {
-      const { citas: c, gastos: g } = await fetchSalonData(salon.sheetId);
-      setCitas(c);
-      setGastos(g);
+      // Fetch admin gastos from Supabase
+      const adminGastos = await getGastosAdmin(salon.id);
+
+      // Convert admin gastos to Gasto format
+      const adminGastosConverted: Gasto[] = adminGastos.map((ag) => ({
+        fecha: new Date(ag.fecha + "T00:00:00"),
+        timestamp: ag.createdAt,
+        descripcion: ag.descripcion,
+        monto: ag.monto,
+        metodoPago: ag.metodoPago,
+        bolsaId: ag.bolsaId,
+        source: "admin" as const,
+        adminId: ag.id,
+      }));
+
+      let sheetCitas: Cita[] = [];
+      let sheetGastos: Gasto[] = [];
+
+      // Fetch from Sheets if valid ID
+      if (salon.sheetId && !salon.sheetId.startsWith("TU_SHEET_ID")) {
+        try {
+          const { citas: c, gastos: g } = await fetchSalonData(salon.sheetId);
+          sheetCitas = c;
+          sheetGastos = g.map((gasto) => ({
+            ...gasto,
+            source: "sheets" as const,
+          }));
+        } catch (err) {
+          setError("No se pudieron cargar los datos de Sheets. Verifica el Sheet ID y la API key.");
+        }
+      }
+
+      const allCitas = sheetCitas;
+      const allGastos = [...sheetGastos, ...adminGastosConverted];
+
+      setCitas(allCitas);
+      setGastos(allGastos);
 
       const acumulados = await getAcumulados(salon.id);
-      const r = calcularResumenSemanal(c, g, salon.bolsas, salon.gastosFijos, acumulados);
+      const r = calcularResumenSemanal(
+        allCitas, allGastos, salon.bolsas, salon.gastosFijos,
+        acumulados, salon.bolsaDefaultGastosId
+      );
       setResumen(r);
-      const hoy = new Date();
-      setDatosGraficas(calcularDatosGraficas(c, g, hoy.getFullYear(), hoy.getMonth()));
     } catch (err) {
-      setError("No se pudieron cargar los datos. Verifica el Sheet ID y la API key.");
-      // Still calculate with empty data so UI renders
+      setError("Error cargando datos.");
       const acumulados = await getAcumulados(salon.id);
-      const r = calcularResumenSemanal([], [], salon.bolsas, salon.gastosFijos, acumulados);
+      const r = calcularResumenSemanal(
+        [], [], salon.bolsas, salon.gastosFijos,
+        acumulados, salon.bolsaDefaultGastosId
+      );
       setResumen(r);
     } finally {
       setLoading(false);
@@ -76,6 +105,12 @@ export default function SalonDashboard() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const handleExportXlsx = async () => {
+    if (!salon) return;
+    const cierres = await getCierres(salon.id);
+    exportarDatosXlsx(salon.nombre, citas, gastos, cierres, salon.bolsas);
+  };
 
   // Loading skeleton
   if (!salon) {
@@ -140,18 +175,17 @@ export default function SalonDashboard() {
               resumen={resumen}
               salon={salon}
               salonColor={salon.color}
+              citas={citas}
+              gastos={gastos}
               onCierreCompleto={loadData}
             />
           )}
 
-          {activeTab === "graficas" && datosGraficas && (
+          {activeTab === "graficas" && (
             <GraficasSection
-              datos={datosGraficas}
+              citas={citas}
+              gastos={gastos}
               salonColor={salon.color}
-              mesLabel={new Date().toLocaleDateString("es-MX", {
-                month: "long",
-                year: "numeric",
-              })}
             />
           )}
 
@@ -164,6 +198,43 @@ export default function SalonDashboard() {
           )}
         </FadeIn>
       )}
+
+      {/* Floating action buttons — bottom right */}
+      <div className="fixed bottom-6 right-6 flex flex-col gap-2 items-end z-50">
+        {/* XLSX export — subtle, small */}
+        <button
+          onClick={handleExportXlsx}
+          className="w-9 h-9 rounded-full bg-surface border border-border flex items-center justify-center opacity-40 hover:opacity-100 active:scale-90 transition-all shadow-sm"
+          title="Descargar Excel"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M7 1V9M7 9L4 6.5M7 9L10 6.5" stroke="#7C7C8A" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M2 10V12H12V10" stroke="#7C7C8A" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+
+        {/* Add expense button */}
+        <button
+          onClick={() => setShowGastoModal(true)}
+          className="w-12 h-12 rounded-full text-white flex items-center justify-center shadow-lg active:scale-90 transition-transform"
+          style={{ backgroundColor: salon.color }}
+          title="Registrar gasto"
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M10 4V16M4 10H16" stroke="white" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Admin expense modal */}
+      <GastoAdminModal
+        open={showGastoModal}
+        onClose={() => setShowGastoModal(false)}
+        salonId={salon.id}
+        salonColor={salon.color}
+        bolsas={salon.bolsas}
+        onSaved={loadData}
+      />
     </main>
   );
 }

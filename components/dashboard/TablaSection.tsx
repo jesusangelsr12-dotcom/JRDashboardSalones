@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import type { Cita, Gasto } from "@/lib/types";
-import { formatMoney, fechaCorta } from "@/lib/calculations";
+import { formatMoney, fechaCorta, mesesDisponibles } from "@/lib/calculations";
 
 interface TablaSectionProps {
   citas: Cita[];
@@ -20,6 +20,7 @@ interface TransaccionRow {
   monto: number;
   metodo: string;
   detalle?: string;
+  source?: string;
 }
 
 export default function TablaSection({
@@ -29,6 +30,9 @@ export default function TablaSection({
 }: TablaSectionProps) {
   const [filter, setFilter] = useState<FilterType>("todo");
   const [search, setSearch] = useState("");
+  const [mesFilter, setMesFilter] = useState("todos");
+
+  const meses = useMemo(() => mesesDisponibles(citas, gastos), [citas, gastos]);
 
   const rows = useMemo<TransaccionRow[]>(() => {
     const citaRows: TransaccionRow[] = citas.map((c, i) => ({
@@ -42,17 +46,26 @@ export default function TablaSection({
     }));
 
     const gastoRows: TransaccionRow[] = gastos.map((g, i) => ({
-      id: `gasto-${i}`,
+      id: g.adminId ? `admin-${g.adminId}` : `gasto-${i}`,
       tipo: "gasto",
       fecha: g.fecha,
       descripcion: g.descripcion,
       monto: -g.monto,
       metodo: g.metodoPago,
+      source: g.source,
     }));
 
     let all = [...citaRows, ...gastoRows].sort(
       (a, b) => b.fecha.getTime() - a.fecha.getTime()
     );
+
+    // Month filter
+    if (mesFilter !== "todos") {
+      const [y, m] = mesFilter.split("-").map(Number);
+      all = all.filter(
+        (r) => r.fecha.getFullYear() === y && r.fecha.getMonth() === m
+      );
+    }
 
     if (filter === "citas") all = all.filter((r) => r.tipo === "cita");
     if (filter === "gastos") all = all.filter((r) => r.tipo === "gasto");
@@ -67,7 +80,7 @@ export default function TablaSection({
     }
 
     return all;
-  }, [citas, gastos, filter, search]);
+  }, [citas, gastos, filter, search, mesFilter]);
 
   const filters: { id: FilterType; label: string }[] = [
     { id: "todo", label: "Todo" },
@@ -77,6 +90,22 @@ export default function TablaSection({
 
   return (
     <section>
+      {/* Month selector */}
+      <div className="mb-3">
+        <select
+          value={mesFilter}
+          onChange={(e) => setMesFilter(e.target.value)}
+          className="w-full bg-surface border border-border rounded-card px-3 py-2.5 text-[13px] font-display text-text-primary outline-none focus:border-text-secondary transition-colors capitalize"
+        >
+          <option value="todos">Todos los meses</option>
+          {meses.map((m) => (
+            <option key={`${m.year}-${m.month}`} value={`${m.year}-${m.month}`}>
+              {m.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* Search */}
       <div className="relative mb-4">
         <svg
@@ -146,9 +175,16 @@ export default function TablaSection({
 
               {/* Info */}
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-display font-medium text-text-primary truncate">
-                  {row.descripcion}
-                </p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-[13px] font-display font-medium text-text-primary truncate">
+                    {row.descripcion}
+                  </p>
+                  {row.source === "admin" && (
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 flex-shrink-0">
+                      Admin
+                    </span>
+                  )}
+                </div>
                 <p className="text-[11px] text-text-secondary font-mono truncate">
                   {fechaCorta(row.fecha)}
                   {row.detalle && ` · ${row.detalle}`}

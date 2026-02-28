@@ -25,17 +25,17 @@ export default function ResumenSemanal({
           variant="large"
         />
 
-        {/* Gastos variables */}
-        <KpiCard
-          label="Gastos var."
-          value={resumen.gastosVariables}
-          negative
-        />
-
         {/* Gastos fijos */}
         <KpiCard
           label="Gastos fijos"
           value={resumen.gastosFijos}
+          negative
+        />
+
+        {/* Gastos variables (info, no restan de libre) */}
+        <KpiCard
+          label="Gastos en bolsas"
+          value={resumen.gastosVariables}
           negative
         />
 
@@ -71,7 +71,7 @@ export default function ResumenSemanal({
 
           {/* Breakdown label */}
           <p className="relative text-[11px] font-mono text-text-secondary mt-2">
-            Ingresos − Gastos fijos − Gastos var.
+            Ingresos − Gastos fijos
           </p>
         </div>
       </div>

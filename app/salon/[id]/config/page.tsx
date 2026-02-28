@@ -22,6 +22,7 @@ export default function SalonConfigPage() {
   const [sheetId, setSheetId] = useState("");
   const [bolsas, setBolsas] = useState<Bolsa[]>([]);
   const [gastosFijos, setGastosFijos] = useState<GastoFijo[]>([]);
+  const [bolsaDefaultGastosId, setBolsaDefaultGastosId] = useState<string | null>(null);
   const [showDelete, setShowDelete] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -36,6 +37,7 @@ export default function SalonConfigPage() {
         setSheetId(s.sheetId);
         setBolsas(s.bolsas);
         setGastosFijos(s.gastosFijos);
+        setBolsaDefaultGastosId(s.bolsaDefaultGastosId);
       }
     }
     load();
@@ -51,6 +53,7 @@ export default function SalonConfigPage() {
       sheetId,
       bolsas,
       gastosFijos,
+      bolsaDefaultGastosId,
     };
     await updateSalon(updated);
     setSaving(false);
@@ -84,6 +87,10 @@ export default function SalonConfigPage() {
   };
 
   const removeBolsa = (index: number) => {
+    const removedId = bolsas[index].id;
+    if (bolsaDefaultGastosId === removedId) {
+      setBolsaDefaultGastosId(null);
+    }
     setBolsas(bolsas.filter((_, i) => i !== index));
   };
 
@@ -150,7 +157,6 @@ export default function SalonConfigPage() {
         </h2>
 
         <div className="bg-surface rounded-card border border-border p-4 space-y-4">
-          {/* Nombre */}
           <div>
             <label className="text-[12px] font-display text-text-secondary mb-1 block">
               Nombre del salón
@@ -163,7 +169,6 @@ export default function SalonConfigPage() {
             />
           </div>
 
-          {/* Color */}
           <div>
             <label className="text-[12px] font-display text-text-secondary mb-2 block">
               Color
@@ -185,7 +190,6 @@ export default function SalonConfigPage() {
             </div>
           </div>
 
-          {/* Sheet ID */}
           <div>
             <label className="text-[12px] font-display text-text-secondary mb-1 block">
               Google Sheet ID
@@ -288,6 +292,32 @@ export default function SalonConfigPage() {
           ))}
         </div>
       </section>
+
+      {/* Bolsa default para gastos automáticos */}
+      {bolsas.length > 0 && (
+        <section className="mb-8">
+          <h2 className="text-[11px] uppercase tracking-[0.08em] text-text-secondary font-display font-medium mb-3">
+            Gastos automáticos (Sheets)
+          </h2>
+          <div className="bg-surface rounded-card border border-border p-4">
+            <p className="text-[12px] text-text-secondary font-display mb-3">
+              Los gastos que llegan de Google Sheets se descontarán de esta bolsa:
+            </p>
+            <select
+              value={bolsaDefaultGastosId || ""}
+              onChange={(e) => setBolsaDefaultGastosId(e.target.value || null)}
+              className="w-full bg-bg border border-border rounded-[8px] px-3 py-2.5 text-[14px] font-display text-text-primary outline-none focus:border-text-secondary transition-colors"
+            >
+              <option value="">Sin asignar</option>
+              {bolsas.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.nombre || "Sin nombre"} ({b.porcentaje}%)
+                </option>
+              ))}
+            </select>
+          </div>
+        </section>
+      )}
 
       {/* Gastos Fijos */}
       <section className="mb-8">

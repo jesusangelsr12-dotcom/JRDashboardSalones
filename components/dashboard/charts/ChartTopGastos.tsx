@@ -11,20 +11,20 @@ import {
 } from "recharts";
 import { formatMoney } from "@/lib/calculations";
 
-interface ChartTopServiciosProps {
-  data: { nombre: string; cantidad: number; total: number }[];
+interface ChartTopGastosProps {
+  data: { descripcion: string; cantidad: number; total: number }[];
   color: string;
 }
 
-export default function ChartTopServicios({
+export default function ChartTopGastos({
   data,
   color,
-}: ChartTopServiciosProps) {
+}: ChartTopGastosProps) {
   if (data.length === 0) {
     return (
       <div className="flex items-center justify-center h-48">
         <p className="text-[13px] text-text-secondary font-display">
-          Sin servicios registrados
+          Sin gastos registrados
         </p>
       </div>
     );
@@ -32,10 +32,15 @@ export default function ChartTopServicios({
 
   const top5 = data.slice(0, 5);
 
+  const chartData = top5.map((d) => ({
+    ...d,
+    nombre: d.descripcion,
+  }));
+
   return (
     <div className="h-52 -ml-2">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={top5} layout="vertical" barCategoryGap="20%">
+        <BarChart data={chartData} layout="vertical" barCategoryGap="20%">
           <XAxis
             type="number"
             tick={{ fontSize: 10, fontFamily: "DM Mono", fill: "#7C7C8A" }}
@@ -49,11 +54,10 @@ export default function ChartTopServicios({
             tick={{ fontSize: 10, fontFamily: "Syne", fill: "#0A0A0F" }}
             axisLine={false}
             tickLine={false}
-            width={120}
+            width={110}
           />
           <Tooltip
             formatter={(value: number) => [formatMoney(value), "Total"]}
-            labelFormatter={(label: string) => label}
             contentStyle={{
               backgroundColor: "#0A0A0F",
               border: "none",
@@ -66,10 +70,10 @@ export default function ChartTopServicios({
             itemStyle={{ color: "#FFFFFF" }}
           />
           <Bar dataKey="total" radius={[0, 6, 6, 0]}>
-            {top5.map((_, i) => (
+            {chartData.map((_, i) => (
               <Cell
                 key={i}
-                fill={color}
+                fill="#EF4444"
                 opacity={1 - i * 0.15}
               />
             ))}
