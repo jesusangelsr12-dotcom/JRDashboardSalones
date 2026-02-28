@@ -88,6 +88,22 @@ export interface GastoAdmin {
   createdAt: string;
 }
 
+// ── Movimiento manual de bolsa ──
+
+export type TipoMovimiento = "ingreso" | "egreso";
+
+export interface MovimientoBolsa {
+  id: string;
+  salonId: string;
+  bolsaId: string;
+  tipo: TipoMovimiento;
+  monto: number;
+  metodoPago: MetodoPago;
+  descripcion: string;
+  fecha: string; // ISO date
+  createdAt: string;
+}
+
 // ── Cierre de semana ──
 
 export interface CierreSemana {

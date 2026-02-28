@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { ResumenSemanal, CierreSemana, Salon, Cita, Gasto, SemanaDetectada } from "@/lib/types";
+import type { ResumenSemanal, CierreSemana, Salon, Cita, Gasto, SemanaDetectada, MovimientoBolsa } from "@/lib/types";
 import {
   formatMoney,
   getLunesDeSemana,
@@ -11,6 +11,7 @@ import {
 } from "@/lib/calculations";
 import { addCierre, getAcumulados, saveAcumulados, getCierres } from "@/lib/store";
 import BolsaCard from "./BolsaCard";
+import ResumenMetodoPago from "./ResumenMetodoPago";
 import Modal from "@/components/ui/Modal";
 
 interface BolsasSectionProps {
@@ -19,7 +20,9 @@ interface BolsasSectionProps {
   salonColor: string;
   citas: Cita[];
   gastos: Gasto[];
+  movimientos: MovimientoBolsa[];
   onCierreCompleto: () => void;
+  onMovimiento: () => void;
 }
 
 export default function BolsasSection({
@@ -28,7 +31,9 @@ export default function BolsasSection({
   salonColor,
   citas,
   gastos,
+  movimientos,
   onCierreCompleto,
+  onMovimiento,
 }: BolsasSectionProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -160,6 +165,15 @@ export default function BolsasSection({
         </div>
       </div>
 
+      {/* Movimiento button */}
+      <button
+        onClick={onMovimiento}
+        className="w-full mb-4 py-2.5 rounded-card border border-dashed text-[13px] font-display font-medium transition-all active:scale-[0.98]"
+        style={{ borderColor: salonColor + "40", color: salonColor }}
+      >
+        + / - Movimiento de bolsa
+      </button>
+
       {/* Bolsa cards */}
       <div className="space-y-3 mb-6">
         {resumen.bolsas.map((bolsa) => (
@@ -173,6 +187,16 @@ export default function BolsasSection({
             gastosAsignados={bolsa.gastosAsignados}
           />
         ))}
+      </div>
+
+      {/* Resumen por método de pago */}
+      <div className="mb-6">
+        <ResumenMetodoPago
+          citas={citas}
+          gastos={gastos}
+          movimientos={movimientos}
+          salonColor={salonColor}
+        />
       </div>
 
       {/* Cerrar semana button */}

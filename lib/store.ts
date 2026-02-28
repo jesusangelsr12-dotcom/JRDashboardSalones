@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "./supabase";
-import type { Salon, Bolsa, GastoFijo, CierreSemana, GastoAdmin, MetodoPago } from "./types";
+import type { Salon, Bolsa, GastoFijo, CierreSemana, GastoAdmin, MetodoPago, MovimientoBolsa, TipoMovimiento } from "./types";
 
 // ── Helpers: mapear filas de Supabase → tipos de la app ──
 
@@ -130,7 +130,49 @@ export async function addSalon(salon: Salon): Promise<void> {
 }
 
 export async function updateSalon(updated: Salon): Promise<void> {
-  // 1. Actualizar datos del salón
+  // ── Bolsas: upsert las que existen + borrar las eliminadas ──
+  // IMPORTANTE: se hace ANTES de actualizar bolsa_default_gastos_id
+  // para evitar que ON DELETE SET NULL borre la referencia.
+
+  // 1. Obtener IDs de bolsas actuales en la BD
+  const { data: existingBolsas } = await supabase
+    .from("bolsas")
+    .select("id")
+    .eq("salon_id", updated.id);
+
+  const existingBolsaIds = new Set((existingBolsas || []).map((b) => b.id));
+  const updatedBolsaIds = new Set(updated.bolsas.map((b) => b.id));
+
+  // 2. Borrar bolsas que ya no existen (las que el usuario removió)
+  const bolsasToDelete = Array.from(existingBolsaIds).filter((id) => !updatedBolsaIds.has(id));
+  if (bolsasToDelete.length > 0) {
+    await supabase.from("bolsas").delete().in("id", bolsasToDelete);
+  }
+
+  // 3. Upsert bolsas (insertar nuevas + actualizar existentes, sin tocar acumulado de existentes)
+  if (updated.bolsas.length > 0) {
+    for (const b of updated.bolsas) {
+      if (existingBolsaIds.has(b.id)) {
+        // Actualizar solo nombre, porcentaje y color — NO tocar acumulado
+        await supabase
+          .from("bolsas")
+          .update({ nombre: b.nombre, porcentaje: b.porcentaje, color: b.color })
+          .eq("id", b.id);
+      } else {
+        // Insertar nueva bolsa
+        await supabase.from("bolsas").insert({
+          id: b.id,
+          salon_id: updated.id,
+          nombre: b.nombre,
+          porcentaje: b.porcentaje,
+          color: b.color,
+          acumulado: b.acumulado,
+        });
+      }
+    }
+  }
+
+  // 4. Actualizar datos del salón (ahora bolsa_default_gastos_id apunta a un ID válido)
   await supabase
     .from("salones")
     .update({
@@ -141,22 +183,7 @@ export async function updateSalon(updated: Salon): Promise<void> {
     })
     .eq("id", updated.id);
 
-  // 2. Reemplazar bolsas: borrar existentes + insertar nuevas
-  await supabase.from("bolsas").delete().eq("salon_id", updated.id);
-  if (updated.bolsas.length > 0) {
-    await supabase.from("bolsas").insert(
-      updated.bolsas.map((b) => ({
-        id: b.id,
-        salon_id: updated.id,
-        nombre: b.nombre,
-        porcentaje: b.porcentaje,
-        color: b.color,
-        acumulado: b.acumulado,
-      }))
-    );
-  }
-
-  // 3. Reemplazar gastos fijos
+  // 5. Reemplazar gastos fijos (no tienen FK cascading, safe to delete+insert)
   await supabase.from("gastos_fijos").delete().eq("salon_id", updated.id);
   if (updated.gastosFijos.length > 0) {
     await supabase.from("gastos_fijos").insert(
@@ -299,6 +326,96 @@ export async function addGastoAdmin(
 
 export async function deleteGastoAdmin(id: string): Promise<void> {
   await supabase.from("gastos_admin").delete().eq("id", id);
+}
+
+// ── Movimientos de bolsa CRUD ──
+
+export async function getMovimientosBolsa(salonId: string): Promise<MovimientoBolsa[]> {
+  const { data, error } = await supabase
+    .from("movimientos_bolsa")
+    .select("*")
+    .eq("salon_id", salonId)
+    .order("fecha", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching movimientos bolsa:", error);
+    return [];
+  }
+
+  return (
+    data?.map((m) => ({
+      id: m.id,
+      salonId: m.salon_id,
+      bolsaId: m.bolsa_id,
+      tipo: m.tipo as TipoMovimiento,
+      monto: m.monto,
+      metodoPago: m.metodo_pago as MetodoPago,
+      descripcion: m.descripcion,
+      fecha: m.fecha,
+      createdAt: m.created_at,
+    })) ?? []
+  );
+}
+
+export async function addMovimientoBolsa(
+  salonId: string,
+  movimiento: {
+    bolsaId: string;
+    tipo: TipoMovimiento;
+    monto: number;
+    metodoPago: MetodoPago;
+    descripcion: string;
+    fecha: string;
+  }
+): Promise<void> {
+  // 1. Insertar el movimiento
+  const { error } = await supabase.from("movimientos_bolsa").insert({
+    salon_id: salonId,
+    bolsa_id: movimiento.bolsaId,
+    tipo: movimiento.tipo,
+    monto: movimiento.monto,
+    metodo_pago: movimiento.metodoPago,
+    descripcion: movimiento.descripcion,
+    fecha: movimiento.fecha,
+  });
+  if (error) {
+    console.error("Error adding movimiento bolsa:", error);
+    return;
+  }
+
+  // 2. Actualizar acumulado de la bolsa
+  const { data: bolsa } = await supabase
+    .from("bolsas")
+    .select("acumulado")
+    .eq("id", movimiento.bolsaId)
+    .single();
+
+  if (bolsa) {
+    const delta = movimiento.tipo === "ingreso" ? movimiento.monto : -movimiento.monto;
+    await supabase
+      .from("bolsas")
+      .update({ acumulado: bolsa.acumulado + delta })
+      .eq("id", movimiento.bolsaId);
+  }
+}
+
+export async function deleteMovimientoBolsa(id: string, bolsaId: string, tipo: TipoMovimiento, monto: number): Promise<void> {
+  // Revertir el acumulado
+  const { data: bolsa } = await supabase
+    .from("bolsas")
+    .select("acumulado")
+    .eq("id", bolsaId)
+    .single();
+
+  if (bolsa) {
+    const delta = tipo === "ingreso" ? -monto : monto;
+    await supabase
+      .from("bolsas")
+      .update({ acumulado: bolsa.acumulado + delta })
+      .eq("id", bolsaId);
+  }
+
+  await supabase.from("movimientos_bolsa").delete().eq("id", id);
 }
 
 // ── Seed data: Bolsas plantilla ──

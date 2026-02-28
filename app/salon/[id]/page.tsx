@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import type { Salon, Cita, Gasto, GastoAdmin, ResumenSemanal as ResumenType } from "@/lib/types";
-import { getSalon, getAcumulados, getGastosAdmin } from "@/lib/store";
+import type { Salon, Cita, Gasto, GastoAdmin, MovimientoBolsa, ResumenSemanal as ResumenType } from "@/lib/types";
+import { getSalon, getAcumulados, getGastosAdmin, getMovimientosBolsa } from "@/lib/store";
 import { fetchSalonData } from "@/lib/sheets";
 import { calcularResumenSemanal } from "@/lib/calculations";
 import { exportarDatosXlsx } from "@/lib/exportXlsx";
@@ -15,6 +15,7 @@ import BolsasSection from "@/components/dashboard/BolsasSection";
 import GraficasSection from "@/components/dashboard/GraficasSection";
 import TablaSection from "@/components/dashboard/TablaSection";
 import GastoAdminModal from "@/components/dashboard/GastoAdminModal";
+import MovimientoBolsaModal from "@/components/dashboard/MovimientoBolsaModal";
 import FadeIn from "@/components/motion/FadeIn";
 
 export default function SalonDashboard() {
@@ -27,6 +28,8 @@ export default function SalonDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showGastoModal, setShowGastoModal] = useState(false);
+  const [showMovimientoModal, setShowMovimientoModal] = useState(false);
+  const [movimientos, setMovimientos] = useState<MovimientoBolsa[]>([]);
 
   // Load salon from store
   useEffect(() => {
@@ -82,6 +85,10 @@ export default function SalonDashboard() {
 
       setCitas(allCitas);
       setGastos(allGastos);
+
+      // Fetch movimientos de bolsa
+      const movs = await getMovimientosBolsa(salon.id);
+      setMovimientos(movs);
 
       const acumulados = await getAcumulados(salon.id);
       const r = calcularResumenSemanal(
@@ -177,7 +184,9 @@ export default function SalonDashboard() {
               salonColor={salon.color}
               citas={citas}
               gastos={gastos}
+              movimientos={movimientos}
               onCierreCompleto={loadData}
+              onMovimiento={() => setShowMovimientoModal(true)}
             />
           )}
 
@@ -230,6 +239,16 @@ export default function SalonDashboard() {
       <GastoAdminModal
         open={showGastoModal}
         onClose={() => setShowGastoModal(false)}
+        salonId={salon.id}
+        salonColor={salon.color}
+        bolsas={salon.bolsas}
+        onSaved={loadData}
+      />
+
+      {/* Movimiento de bolsa modal */}
+      <MovimientoBolsaModal
+        open={showMovimientoModal}
+        onClose={() => setShowMovimientoModal(false)}
         salonId={salon.id}
         salonColor={salon.color}
         bolsas={salon.bolsas}

@@ -61,19 +61,34 @@ create table gastos_admin (
   created_at timestamptz not null default now()
 );
 
--- 6. Índices para queries frecuentes
+-- 6. Tabla de movimientos manuales de bolsa (agregar/restar dinero)
+create table movimientos_bolsa (
+  id uuid primary key default gen_random_uuid(),
+  salon_id uuid not null references salones(id) on delete cascade,
+  bolsa_id uuid not null references bolsas(id) on delete cascade,
+  tipo text not null check (tipo in ('ingreso', 'egreso')),
+  monto numeric not null,
+  metodo_pago text not null default 'Efectivo',
+  descripcion text not null default '',
+  fecha date not null,
+  created_at timestamptz not null default now()
+);
+
+-- 7. Índices para queries frecuentes
 create index idx_bolsas_salon on bolsas(salon_id);
 create index idx_gastos_fijos_salon on gastos_fijos(salon_id);
 create index idx_cierres_salon on cierres(salon_id);
 create index idx_cierres_semana on cierres(salon_id, semana_inicio);
 create index idx_gastos_admin_salon on gastos_admin(salon_id);
+create index idx_movimientos_bolsa_salon on movimientos_bolsa(salon_id);
+create index idx_movimientos_bolsa_bolsa on movimientos_bolsa(bolsa_id);
 
--- 7. FK de bolsa_default_gastos_id (after bolsas table exists)
+-- 8. FK de bolsa_default_gastos_id (after bolsas table exists)
 alter table salones
   add constraint fk_bolsa_default_gastos
   foreign key (bolsa_default_gastos_id) references bolsas(id) on delete set null;
 
--- 8. RLS deshabilitado por ahora (solo tú usas la app)
+-- 9. RLS deshabilitado por ahora (solo tú usas la app)
 --    Cuando agregues auth, habilita RLS y crea policies:
 --    alter table salones enable row level security;
 --    create policy "Users can manage their salones" on salones
