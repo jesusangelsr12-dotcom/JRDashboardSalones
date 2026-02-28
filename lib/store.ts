@@ -456,6 +456,10 @@ export function crearBolsasPlantilla(): Bolsa[] {
 // ── Seed data: Salones iniciales ──
 
 export async function seedSalones(): Promise<Salon[]> {
+  // Double-check: otra pestaña/dispositivo pudo haber insertado mientras tanto
+  const { salones: existing } = await getSalones();
+  if (existing.length > 0) return existing;
+
   const salones: Salon[] = [
     {
       id: uuidv4(),
@@ -553,9 +557,7 @@ let _initPromise: Promise<Salon[]> | null = null;
 
 export function initStore(): Promise<Salon[]> {
   if (!_initPromise) {
-    _initPromise = _doInitStore().finally(() => {
-      _initPromise = null;
-    });
+    _initPromise = _doInitStore();
   }
   return _initPromise;
 }
