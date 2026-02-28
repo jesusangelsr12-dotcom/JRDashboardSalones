@@ -61,7 +61,7 @@ function mapSalon(row: SalonRow): Salon {
 export async function getSalones(): Promise<{ salones: Salon[]; error: boolean }> {
   const { data, error } = await supabase
     .from("salones")
-    .select("*, bolsas(*), gastos_fijos(*)")
+    .select("*, bolsas!bolsas_salon_id_fkey(*), gastos_fijos(*)")
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -75,7 +75,7 @@ export async function getSalones(): Promise<{ salones: Salon[]; error: boolean }
 export async function getSalon(id: string): Promise<Salon | undefined> {
   const { data, error } = await supabase
     .from("salones")
-    .select("*, bolsas(*), gastos_fijos(*)")
+    .select("*, bolsas!bolsas_salon_id_fkey(*), gastos_fijos(*)")
     .eq("id", id)
     .single();
 
