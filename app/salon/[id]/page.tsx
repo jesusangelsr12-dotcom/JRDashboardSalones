@@ -31,14 +31,21 @@ export default function SalonDashboard() {
   const [showMovimientoModal, setShowMovimientoModal] = useState(false);
   const [movimientos, setMovimientos] = useState<MovimientoBolsa[]>([]);
 
-  // Load salon from store
-  useEffect(() => {
-    async function load() {
-      const s = await getSalon(params.id);
-      if (s) setSalon(s);
-    }
-    load();
+  // Load salon from store — also refresh when page regains focus (e.g. back from config)
+  const loadSalon = useCallback(async () => {
+    const s = await getSalon(params.id);
+    if (s) setSalon(s);
   }, [params.id]);
+
+  useEffect(() => {
+    loadSalon();
+  }, [loadSalon]);
+
+  useEffect(() => {
+    const onFocus = () => { loadSalon(); };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [loadSalon]);
 
   // Fetch data from Sheets + admin gastos
   const loadData = useCallback(async () => {

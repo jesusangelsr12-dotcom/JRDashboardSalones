@@ -238,10 +238,15 @@ export async function deleteSalon(id: string): Promise<boolean> {
 export async function getAcumulados(
   salonId: string
 ): Promise<Record<string, number>> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("bolsas")
     .select("id, acumulado")
     .eq("salon_id", salonId);
+
+  if (error) {
+    console.error("Error fetching acumulados:", error);
+    return {};
+  }
 
   const result: Record<string, number> = {};
   data?.forEach((b) => {
@@ -250,8 +255,33 @@ export async function getAcumulados(
   return result;
 }
 
+// Incremento atómico: usa RPC si existe, si no hace read-modify-write
+async function incrementAcumulado(bolsaId: string, delta: number): Promise<void> {
+  // Intentar RPC atómica primero
+  const { error: rpcError } = await supabase.rpc("increment_acumulado", {
+    bolsa_uuid: bolsaId,
+    delta,
+  });
+
+  if (!rpcError) return;
+
+  // Fallback: read-modify-write (menos seguro, pero funciona sin la migración)
+  const { data: bolsa } = await supabase
+    .from("bolsas")
+    .select("acumulado")
+    .eq("id", bolsaId)
+    .single();
+
+  if (bolsa) {
+    await supabase
+      .from("bolsas")
+      .update({ acumulado: bolsa.acumulado + delta })
+      .eq("id", bolsaId);
+  }
+}
+
 export async function saveAcumulados(
-  salonId: string,
+  _salonId: string,
   acumulados: Record<string, number>
 ): Promise<void> {
   const updates = Object.entries(acumulados).map(([bolsaId, acumulado]) =>
@@ -261,10 +291,11 @@ export async function saveAcumulados(
 }
 
 export async function resetAcumulados(salonId: string): Promise<void> {
-  await supabase
+  const { error } = await supabase
     .from("bolsas")
     .update({ acumulado: 0 })
     .eq("salon_id", salonId);
+  if (error) console.error("Error resetting acumulados:", error);
 }
 
 // ── Cierres de semana ──
@@ -432,39 +463,22 @@ export async function addMovimientoBolsa(
     return;
   }
 
-  // 2. Actualizar acumulado de la bolsa
-  const { data: bolsa } = await supabase
-    .from("bolsas")
-    .select("acumulado")
-    .eq("id", movimiento.bolsaId)
-    .single();
-
-  if (bolsa) {
-    const delta = movimiento.tipo === "ingreso" ? movimiento.monto : -movimiento.monto;
-    await supabase
-      .from("bolsas")
-      .update({ acumulado: bolsa.acumulado + delta })
-      .eq("id", movimiento.bolsaId);
-  }
+  // 2. Actualizar acumulado atómicamente
+  const delta = movimiento.tipo === "ingreso" ? movimiento.monto : -movimiento.monto;
+  await incrementAcumulado(movimiento.bolsaId, delta);
 }
 
 export async function deleteMovimientoBolsa(id: string, bolsaId: string, tipo: TipoMovimiento, monto: number): Promise<void> {
-  // Revertir el acumulado
-  const { data: bolsa } = await supabase
-    .from("bolsas")
-    .select("acumulado")
-    .eq("id", bolsaId)
-    .single();
-
-  if (bolsa) {
-    const delta = tipo === "ingreso" ? -monto : monto;
-    await supabase
-      .from("bolsas")
-      .update({ acumulado: bolsa.acumulado + delta })
-      .eq("id", bolsaId);
+  // 1. Primero borrar el registro
+  const { error } = await supabase.from("movimientos_bolsa").delete().eq("id", id);
+  if (error) {
+    console.error("Error deleting movimiento:", error);
+    return;
   }
 
-  await supabase.from("movimientos_bolsa").delete().eq("id", id);
+  // 2. Después revertir el acumulado atómicamente
+  const delta = tipo === "ingreso" ? -monto : monto;
+  await incrementAcumulado(bolsaId, delta);
 }
 
 // ── Seed data: Bolsas plantilla ──

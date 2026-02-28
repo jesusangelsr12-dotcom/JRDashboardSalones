@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Bolsa, MetodoPago } from "@/lib/types";
 import { addGastoAdmin } from "@/lib/store";
 import Modal from "@/components/ui/Modal";
@@ -28,6 +28,11 @@ export default function GastoAdminModal({
   const [fecha, setFecha] = useState(new Date().toISOString().split("T")[0]);
   const [bolsaId, setBolsaId] = useState<string>("");
   const [saving, setSaving] = useState(false);
+
+  // Resetear fecha cada vez que se abre el modal
+  useEffect(() => {
+    if (open) setFecha(new Date().toISOString().split("T")[0]);
+  }, [open]);
 
   const handleSave = async () => {
     if (!descripcion.trim() || !monto || Number(monto) <= 0) return;
