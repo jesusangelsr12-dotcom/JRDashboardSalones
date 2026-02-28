@@ -65,7 +65,7 @@ export async function getSalones(): Promise<{ salones: Salon[]; error: boolean }
     .order("created_at", { ascending: true });
 
   if (error) {
-    console.error("Error fetching salones:", error);
+    console.error("Error fetching salones:", JSON.stringify(error, null, 2));
     return { salones: [], error: true };
   }
 
