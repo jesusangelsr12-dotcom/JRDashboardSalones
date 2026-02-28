@@ -27,8 +27,11 @@ export default function SalonDashboard() {
 
   // Load salon from store
   useEffect(() => {
-    const s = getSalon(params.id);
-    if (s) setSalon(s);
+    async function load() {
+      const s = await getSalon(params.id);
+      if (s) setSalon(s);
+    }
+    load();
   }, [params.id]);
 
   // Fetch data from Sheets
@@ -37,7 +40,7 @@ export default function SalonDashboard() {
 
     // Skip fetch for placeholder sheet IDs
     if (!salon.sheetId || salon.sheetId.startsWith("TU_SHEET_ID")) {
-      const acumulados = getAcumulados(salon.id);
+      const acumulados = await getAcumulados(salon.id);
       const r = calcularResumenSemanal([], [], salon.bolsas, salon.gastosFijos, acumulados);
       setResumen(r);
       const hoy = new Date();
@@ -54,7 +57,7 @@ export default function SalonDashboard() {
       setCitas(c);
       setGastos(g);
 
-      const acumulados = getAcumulados(salon.id);
+      const acumulados = await getAcumulados(salon.id);
       const r = calcularResumenSemanal(c, g, salon.bolsas, salon.gastosFijos, acumulados);
       setResumen(r);
       const hoy = new Date();
@@ -62,7 +65,7 @@ export default function SalonDashboard() {
     } catch (err) {
       setError("No se pudieron cargar los datos. Verifica el Sheet ID y la API key.");
       // Still calculate with empty data so UI renders
-      const acumulados = getAcumulados(salon.id);
+      const acumulados = await getAcumulados(salon.id);
       const r = calcularResumenSemanal([], [], salon.bolsas, salon.gastosFijos, acumulados);
       setResumen(r);
     } finally {

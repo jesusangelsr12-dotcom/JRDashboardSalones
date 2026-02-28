@@ -24,21 +24,26 @@ export default function SalonConfigPage() {
   const [gastosFijos, setGastosFijos] = useState<GastoFijo[]>([]);
   const [showDelete, setShowDelete] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const s = getSalon(params.id);
-    if (s) {
-      setSalon(s);
-      setNombre(s.nombre);
-      setColor(s.color);
-      setSheetId(s.sheetId);
-      setBolsas(s.bolsas);
-      setGastosFijos(s.gastosFijos);
+    async function load() {
+      const s = await getSalon(params.id);
+      if (s) {
+        setSalon(s);
+        setNombre(s.nombre);
+        setColor(s.color);
+        setSheetId(s.sheetId);
+        setBolsas(s.bolsas);
+        setGastosFijos(s.gastosFijos);
+      }
     }
+    load();
   }, [params.id]);
 
-  const handleSave = () => {
-    if (!salon) return;
+  const handleSave = async () => {
+    if (!salon || saving) return;
+    setSaving(true);
     const updated: Salon = {
       ...salon,
       nombre,
@@ -47,13 +52,14 @@ export default function SalonConfigPage() {
       bolsas,
       gastosFijos,
     };
-    updateSalon(updated);
+    await updateSalon(updated);
+    setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const handleDelete = () => {
-    deleteSalon(params.id);
+  const handleDelete = async () => {
+    await deleteSalon(params.id);
     router.push("/");
   };
 
@@ -351,10 +357,11 @@ export default function SalonConfigPage() {
       {/* Save button */}
       <button
         onClick={handleSave}
+        disabled={saving}
         className="w-full py-3.5 rounded-card text-[14px] font-display font-semibold text-white active:scale-[0.98] transition-all mb-4"
         style={{ backgroundColor: color }}
       >
-        {saved ? "Guardado" : "Guardar cambios"}
+        {saving ? "Guardando..." : saved ? "Guardado" : "Guardar cambios"}
       </button>
 
       {/* Delete */}

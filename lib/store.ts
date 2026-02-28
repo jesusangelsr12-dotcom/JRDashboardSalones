@@ -1,94 +1,247 @@
 import { v4 as uuidv4 } from "uuid";
-import type { Salon, Bolsa, CierreSemana } from "./types";
+import { supabase } from "./supabase";
+import type { Salon, Bolsa, GastoFijo, CierreSemana } from "./types";
 
-// ── Keys ──
+// ── Helpers: mapear filas de Supabase → tipos de la app ──
 
-const SALONES_KEY = "jr_salones";
-const acumuladosKey = (salonId: string) => `acumulados_${salonId}`;
-const cierresKey = (salonId: string) => `cierres_${salonId}`;
-
-// ── Helpers genéricos ──
-
-function getItem<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
+interface SalonRow {
+  id: string;
+  nombre: string;
+  color: string;
+  sheet_id: string;
+  created_at: string;
+  bolsas: BolsaRow[];
+  gastos_fijos: GastoFijoRow[];
 }
 
-function setItem<T>(key: string, value: T): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(key, JSON.stringify(value));
+interface BolsaRow {
+  id: string;
+  salon_id: string;
+  nombre: string;
+  porcentaje: number;
+  color: string;
+  acumulado: number;
+}
+
+interface GastoFijoRow {
+  id: string;
+  salon_id: string;
+  nombre: string;
+  monto: number;
+  frecuencia: string;
+}
+
+function mapSalon(row: SalonRow): Salon {
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    color: row.color,
+    sheetId: row.sheet_id,
+    bolsas: (row.bolsas || []).map((b) => ({
+      id: b.id,
+      nombre: b.nombre,
+      porcentaje: b.porcentaje,
+      color: b.color,
+      acumulado: b.acumulado,
+    })),
+    gastosFijos: (row.gastos_fijos || []).map((g) => ({
+      id: g.id,
+      nombre: g.nombre,
+      monto: g.monto,
+      frecuencia: g.frecuencia as "semanal" | "mensual",
+    })),
+    createdAt: row.created_at,
+  };
 }
 
 // ── Salones CRUD ──
 
-export function getSalones(): Salon[] {
-  return getItem<Salon[]>(SALONES_KEY, []);
-}
+export async function getSalones(): Promise<Salon[]> {
+  const { data, error } = await supabase
+    .from("salones")
+    .select("*, bolsas(*), gastos_fijos(*)")
+    .order("created_at", { ascending: true });
 
-export function getSalon(id: string): Salon | undefined {
-  return getSalones().find((s) => s.id === id);
-}
-
-export function saveSalones(salones: Salon[]): void {
-  setItem(SALONES_KEY, salones);
-}
-
-export function addSalon(salon: Salon): void {
-  const salones = getSalones();
-  salones.push(salon);
-  saveSalones(salones);
-}
-
-export function updateSalon(updated: Salon): void {
-  const salones = getSalones().map((s) =>
-    s.id === updated.id ? updated : s
-  );
-  saveSalones(salones);
-}
-
-export function deleteSalon(id: string): void {
-  const salones = getSalones().filter((s) => s.id !== id);
-  saveSalones(salones);
-  // Limpiar datos asociados
-  if (typeof window !== "undefined") {
-    localStorage.removeItem(acumuladosKey(id));
-    localStorage.removeItem(cierresKey(id));
+  if (error) {
+    console.error("Error fetching salones:", error);
+    return [];
   }
+
+  return (data as unknown as SalonRow[]).map(mapSalon);
+}
+
+export async function getSalon(id: string): Promise<Salon | undefined> {
+  const { data, error } = await supabase
+    .from("salones")
+    .select("*, bolsas(*), gastos_fijos(*)")
+    .eq("id", id)
+    .single();
+
+  if (error || !data) return undefined;
+  return mapSalon(data as unknown as SalonRow);
+}
+
+export async function addSalon(salon: Salon): Promise<void> {
+  // 1. Insertar salón
+  const { error: salonError } = await supabase.from("salones").insert({
+    id: salon.id,
+    nombre: salon.nombre,
+    color: salon.color,
+    sheet_id: salon.sheetId,
+    created_at: salon.createdAt,
+  });
+
+  if (salonError) {
+    console.error("Error adding salon:", salonError);
+    return;
+  }
+
+  // 2. Insertar bolsas
+  if (salon.bolsas.length > 0) {
+    const { error: bolsasError } = await supabase.from("bolsas").insert(
+      salon.bolsas.map((b) => ({
+        id: b.id,
+        salon_id: salon.id,
+        nombre: b.nombre,
+        porcentaje: b.porcentaje,
+        color: b.color,
+        acumulado: b.acumulado,
+      }))
+    );
+    if (bolsasError) console.error("Error adding bolsas:", bolsasError);
+  }
+
+  // 3. Insertar gastos fijos
+  if (salon.gastosFijos.length > 0) {
+    const { error: gastosError } = await supabase.from("gastos_fijos").insert(
+      salon.gastosFijos.map((g) => ({
+        id: g.id,
+        salon_id: salon.id,
+        nombre: g.nombre,
+        monto: g.monto,
+        frecuencia: g.frecuencia,
+      }))
+    );
+    if (gastosError) console.error("Error adding gastos fijos:", gastosError);
+  }
+}
+
+export async function updateSalon(updated: Salon): Promise<void> {
+  // 1. Actualizar datos del salón
+  await supabase
+    .from("salones")
+    .update({
+      nombre: updated.nombre,
+      color: updated.color,
+      sheet_id: updated.sheetId,
+    })
+    .eq("id", updated.id);
+
+  // 2. Reemplazar bolsas: borrar existentes + insertar nuevas
+  await supabase.from("bolsas").delete().eq("salon_id", updated.id);
+  if (updated.bolsas.length > 0) {
+    await supabase.from("bolsas").insert(
+      updated.bolsas.map((b) => ({
+        id: b.id,
+        salon_id: updated.id,
+        nombre: b.nombre,
+        porcentaje: b.porcentaje,
+        color: b.color,
+        acumulado: b.acumulado,
+      }))
+    );
+  }
+
+  // 3. Reemplazar gastos fijos
+  await supabase.from("gastos_fijos").delete().eq("salon_id", updated.id);
+  if (updated.gastosFijos.length > 0) {
+    await supabase.from("gastos_fijos").insert(
+      updated.gastosFijos.map((g) => ({
+        id: g.id,
+        salon_id: updated.id,
+        nombre: g.nombre,
+        monto: g.monto,
+        frecuencia: g.frecuencia,
+      }))
+    );
+  }
+}
+
+export async function deleteSalon(id: string): Promise<void> {
+  // CASCADE se encarga de bolsas, gastos_fijos y cierres
+  await supabase.from("salones").delete().eq("id", id);
 }
 
 // ── Acumulados de bolsas ──
 
-export function getAcumulados(salonId: string): Record<string, number> {
-  return getItem<Record<string, number>>(acumuladosKey(salonId), {});
+export async function getAcumulados(
+  salonId: string
+): Promise<Record<string, number>> {
+  const { data } = await supabase
+    .from("bolsas")
+    .select("id, acumulado")
+    .eq("salon_id", salonId);
+
+  const result: Record<string, number> = {};
+  data?.forEach((b) => {
+    result[b.id] = b.acumulado;
+  });
+  return result;
 }
 
-export function saveAcumulados(
+export async function saveAcumulados(
   salonId: string,
   acumulados: Record<string, number>
-): void {
-  setItem(acumuladosKey(salonId), acumulados);
+): Promise<void> {
+  const updates = Object.entries(acumulados).map(([bolsaId, acumulado]) =>
+    supabase.from("bolsas").update({ acumulado }).eq("id", bolsaId)
+  );
+  await Promise.all(updates);
 }
 
-export function resetAcumulados(salonId: string): void {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem(acumuladosKey(salonId));
+export async function resetAcumulados(salonId: string): Promise<void> {
+  await supabase
+    .from("bolsas")
+    .update({ acumulado: 0 })
+    .eq("salon_id", salonId);
 }
 
 // ── Cierres de semana ──
 
-export function getCierres(salonId: string): CierreSemana[] {
-  return getItem<CierreSemana[]>(cierresKey(salonId), []);
+export async function getCierres(salonId: string): Promise<CierreSemana[]> {
+  const { data } = await supabase
+    .from("cierres")
+    .select("*")
+    .eq("salon_id", salonId)
+    .order("created_at", { ascending: true });
+
+  return (
+    data?.map((c) => ({
+      fecha: c.fecha,
+      semanaInicio: c.semana_inicio,
+      semanaFin: c.semana_fin,
+      ingresos: c.ingresos,
+      gastos: c.gastos,
+      libre: c.libre,
+      bolsas: c.bolsas as CierreSemana["bolsas"],
+    })) ?? []
+  );
 }
 
-export function addCierre(salonId: string, cierre: CierreSemana): void {
-  const cierres = getCierres(salonId);
-  cierres.push(cierre);
-  setItem(cierresKey(salonId), cierres);
+export async function addCierre(
+  salonId: string,
+  cierre: CierreSemana
+): Promise<void> {
+  await supabase.from("cierres").insert({
+    salon_id: salonId,
+    fecha: cierre.fecha,
+    semana_inicio: cierre.semanaInicio,
+    semana_fin: cierre.semanaFin,
+    ingresos: cierre.ingresos,
+    gastos: cierre.gastos,
+    libre: cierre.libre,
+    bolsas: cierre.bolsas,
+  });
 }
 
 // ── Seed data: Bolsas plantilla ──
@@ -128,7 +281,7 @@ export function crearBolsasPlantilla(): Bolsa[] {
 
 // ── Seed data: Salones iniciales ──
 
-export function seedSalones(): Salon[] {
+export async function seedSalones(): Promise<Salon[]> {
   const salones: Salon[] = [
     {
       id: uuidv4(),
@@ -210,14 +363,18 @@ export function seedSalones(): Salon[] {
       createdAt: new Date().toISOString(),
     },
   ];
-  saveSalones(salones);
+
+  for (const salon of salones) {
+    await addSalon(salon);
+  }
+
   return salones;
 }
 
 // ── Inicializar store ──
 
-export function initStore(): Salon[] {
-  const existing = getSalones();
+export async function initStore(): Promise<Salon[]> {
+  const existing = await getSalones();
   if (existing.length > 0) return existing;
   return seedSalones();
 }

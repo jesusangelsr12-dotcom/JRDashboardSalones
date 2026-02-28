@@ -1,0 +1,61 @@
+-- ============================================
+-- JR Consulting Dashboard - Supabase Schema
+-- ============================================
+-- Ejecutar este SQL en el SQL Editor de Supabase
+-- (Dashboard → SQL Editor → New Query → Pegar → Run)
+-- ============================================
+
+-- 1. Tabla de salones
+create table salones (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  color text not null default '#2563EB',
+  sheet_id text not null default '',
+  created_at timestamptz not null default now()
+);
+
+-- 2. Tabla de bolsas (distribución de dinero)
+create table bolsas (
+  id uuid primary key default gen_random_uuid(),
+  salon_id uuid not null references salones(id) on delete cascade,
+  nombre text not null,
+  porcentaje numeric not null default 0,
+  color text not null default '#6366F1',
+  acumulado numeric not null default 0
+);
+
+-- 3. Tabla de gastos fijos
+create table gastos_fijos (
+  id uuid primary key default gen_random_uuid(),
+  salon_id uuid not null references salones(id) on delete cascade,
+  nombre text not null,
+  monto numeric not null default 0,
+  frecuencia text not null default 'mensual'
+    check (frecuencia in ('semanal', 'mensual'))
+);
+
+-- 4. Tabla de cierres semanales
+create table cierres (
+  id uuid primary key default gen_random_uuid(),
+  salon_id uuid not null references salones(id) on delete cascade,
+  fecha text not null,
+  semana_inicio text not null,
+  semana_fin text not null,
+  ingresos numeric not null default 0,
+  gastos numeric not null default 0,
+  libre numeric not null default 0,
+  bolsas jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+-- 5. Índices para queries frecuentes
+create index idx_bolsas_salon on bolsas(salon_id);
+create index idx_gastos_fijos_salon on gastos_fijos(salon_id);
+create index idx_cierres_salon on cierres(salon_id);
+create index idx_cierres_semana on cierres(salon_id, semana_inicio);
+
+-- 6. RLS deshabilitado por ahora (solo tú usas la app)
+--    Cuando agregues auth, habilita RLS y crea policies:
+--    alter table salones enable row level security;
+--    create policy "Users can manage their salones" on salones
+--      for all using (auth.uid() = user_id);

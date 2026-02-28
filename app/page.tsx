@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import type { Salon, Cita } from "@/lib/types";
+import type { Salon } from "@/lib/types";
 import { initStore } from "@/lib/store";
 import { fetchSalonData } from "@/lib/sheets";
 import { calcularIngresosMes } from "@/lib/calculations";
@@ -18,9 +18,12 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const data = initStore();
-    setSalones(data);
-    setMounted(true);
+    async function load() {
+      const data = await initStore();
+      setSalones(data);
+      setMounted(true);
+    }
+    load();
   }, []);
 
   const fetchIngresos = useCallback(async (salon: Salon) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { ResumenSemanal, CierreSemana, Salon } from "@/lib/types";
 import { formatMoney, getLunesDeSemana, getDomingoDeSemana } from "@/lib/calculations";
 import { addCierre, getAcumulados, saveAcumulados, getCierres } from "@/lib/store";
@@ -22,15 +22,19 @@ export default function BolsasSection({
 }: BolsasSectionProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [yaCerrada, setYaCerrada] = useState(false);
 
-  const yaCerrada = (() => {
-    const cierres = getCierres(salon.id);
-    const hoy = new Date();
-    const lunesActual = getLunesDeSemana(hoy).toISOString().split("T")[0];
-    return cierres.some((c) => c.semanaInicio === lunesActual);
-  })();
+  useEffect(() => {
+    async function checkCierre() {
+      const cierres = await getCierres(salon.id);
+      const hoy = new Date();
+      const lunesActual = getLunesDeSemana(hoy).toISOString().split("T")[0];
+      setYaCerrada(cierres.some((c) => c.semanaInicio === lunesActual));
+    }
+    checkCierre();
+  }, [salon.id]);
 
-  const handleCerrarSemana = () => {
+  const handleCerrarSemana = async () => {
     setClosing(true);
 
     const hoy = new Date();
@@ -52,18 +56,19 @@ export default function BolsasSection({
     };
 
     // Save cierre
-    addCierre(salon.id, cierre);
+    await addCierre(salon.id, cierre);
 
     // Update acumulados
-    const acumulados = getAcumulados(salon.id);
+    const acumulados = await getAcumulados(salon.id);
     resumen.bolsas.forEach((b) => {
       acumulados[b.bolsaId] = (acumulados[b.bolsaId] || 0) + b.montoSemana;
     });
-    saveAcumulados(salon.id, acumulados);
+    await saveAcumulados(salon.id, acumulados);
 
     setTimeout(() => {
       setClosing(false);
       setShowConfirm(false);
+      setYaCerrada(true);
       onCierreCompleto();
     }, 400);
   };

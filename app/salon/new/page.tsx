@@ -18,9 +18,11 @@ export default function NuevoSalonPage() {
   const [color, setColor] = useState("#2563EB");
   const [sheetId, setSheetId] = useState("");
   const [step, setStep] = useState<1 | 2>(1);
+  const [creating, setCreating] = useState(false);
 
-  const handleCreate = () => {
-    if (!nombre.trim()) return;
+  const handleCreate = async () => {
+    if (!nombre.trim() || creating) return;
+    setCreating(true);
 
     const salon: Salon = {
       id: uuidv4(),
@@ -32,7 +34,7 @@ export default function NuevoSalonPage() {
       createdAt: new Date().toISOString(),
     };
 
-    addSalon(salon);
+    await addSalon(salon);
     router.push(`/salon/${salon.id}`);
   };
 
@@ -171,10 +173,11 @@ export default function NuevoSalonPage() {
             </button>
             <button
               onClick={handleCreate}
+              disabled={creating}
               className="flex-1 py-3.5 rounded-card text-[14px] font-display font-semibold text-white active:scale-[0.98] transition-all"
               style={{ backgroundColor: color }}
             >
-              Crear salón
+              {creating ? "Creando..." : "Crear salón"}
             </button>
           </div>
         </section>
