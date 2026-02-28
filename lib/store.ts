@@ -453,6 +453,35 @@ export function crearBolsasPlantilla(): Bolsa[] {
   ];
 }
 
+// ── Deduplicar salones: elimina duplicados por nombre, conserva el más antiguo ──
+
+async function deduplicarSalones(): Promise<void> {
+  const { data: allSalones, error } = await supabase
+    .from("salones")
+    .select("id, nombre, created_at")
+    .order("created_at", { ascending: true });
+
+  if (error || !allSalones) return;
+
+  const seen = new Map<string, string>();
+  const idsToDelete: string[] = [];
+
+  for (const s of allSalones) {
+    if (seen.has(s.nombre)) {
+      idsToDelete.push(s.id);
+    } else {
+      seen.set(s.nombre, s.id);
+    }
+  }
+
+  if (idsToDelete.length === 0) return;
+
+  // Borrar bolsas y gastos_fijos asociados, luego los salones duplicados
+  await supabase.from("bolsas").delete().in("salon_id", idsToDelete);
+  await supabase.from("gastos_fijos").delete().in("salon_id", idsToDelete);
+  await supabase.from("salones").delete().in("id", idsToDelete);
+}
+
 // ── Seed data: Salones iniciales ──
 
 export async function seedSalones(): Promise<Salon[]> {
@@ -565,6 +594,17 @@ export function initStore(): Promise<Salon[]> {
 async function _doInitStore(): Promise<Salon[]> {
   const { salones, error } = await getSalones();
   if (error) return [];
-  if (salones.length > 0) return salones;
+
+  if (salones.length > 0) {
+    // Limpiar duplicados si existen (self-healing)
+    const nombres = salones.map((s) => s.nombre);
+    if (new Set(nombres).size < nombres.length) {
+      await deduplicarSalones();
+      const { salones: clean } = await getSalones();
+      return clean;
+    }
+    return salones;
+  }
+
   return seedSalones();
 }
