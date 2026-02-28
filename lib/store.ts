@@ -83,20 +83,20 @@ export async function getSalon(id: string): Promise<Salon | undefined> {
   return mapSalon(data as unknown as SalonRow);
 }
 
-export async function addSalon(salon: Salon): Promise<void> {
-  // 1. Insertar salón
+export async function addSalon(salon: Salon): Promise<boolean> {
+  // 1. Insertar salón (sin bolsa_default_gastos_id todavía, la bolsa no existe aún)
   const { error: salonError } = await supabase.from("salones").insert({
     id: salon.id,
     nombre: salon.nombre,
     color: salon.color,
     sheet_id: salon.sheetId,
-    bolsa_default_gastos_id: salon.bolsaDefaultGastosId,
+    bolsa_default_gastos_id: null,
     created_at: salon.createdAt,
   });
 
   if (salonError) {
     console.error("Error adding salon:", salonError);
-    return;
+    return false;
   }
 
   // 2. Insertar bolsas
@@ -111,7 +111,10 @@ export async function addSalon(salon: Salon): Promise<void> {
         acumulado: b.acumulado,
       }))
     );
-    if (bolsasError) console.error("Error adding bolsas:", bolsasError);
+    if (bolsasError) {
+      console.error("Error adding bolsas:", bolsasError);
+      return false;
+    }
   }
 
   // 3. Insertar gastos fijos
@@ -125,15 +128,24 @@ export async function addSalon(salon: Salon): Promise<void> {
         frecuencia: g.frecuencia,
       }))
     );
-    if (gastosError) console.error("Error adding gastos fijos:", gastosError);
+    if (gastosError) {
+      console.error("Error adding gastos fijos:", gastosError);
+      return false;
+    }
   }
+
+  // 4. Ahora que las bolsas existen, asignar bolsa_default_gastos_id si aplica
+  if (salon.bolsaDefaultGastosId) {
+    await supabase
+      .from("salones")
+      .update({ bolsa_default_gastos_id: salon.bolsaDefaultGastosId })
+      .eq("id", salon.id);
+  }
+
+  return true;
 }
 
 export async function updateSalon(updated: Salon): Promise<void> {
-  // ── Bolsas: upsert las que existen + borrar las eliminadas ──
-  // IMPORTANTE: se hace ANTES de actualizar bolsa_default_gastos_id
-  // para evitar que ON DELETE SET NULL borre la referencia.
-
   // 1. Obtener IDs de bolsas actuales en la BD
   const { data: existingBolsas } = await supabase
     .from("bolsas")
@@ -142,37 +154,41 @@ export async function updateSalon(updated: Salon): Promise<void> {
 
   const existingBolsaIds = new Set((existingBolsas || []).map((b) => b.id));
   const updatedBolsaIds = new Set(updated.bolsas.map((b) => b.id));
-
-  // 2. Borrar bolsas que ya no existen (las que el usuario removió)
   const bolsasToDelete = Array.from(existingBolsaIds).filter((id) => !updatedBolsaIds.has(id));
+
+  // 2. Si vamos a borrar bolsas, primero quitar bolsa_default_gastos_id
+  //    para evitar que la FK bloquee el delete
   if (bolsasToDelete.length > 0) {
+    await supabase
+      .from("salones")
+      .update({ bolsa_default_gastos_id: null })
+      .eq("id", updated.id);
+
+    // Borrar movimientos asociados a las bolsas que se van
+    await supabase.from("movimientos_bolsa").delete().in("bolsa_id", bolsasToDelete);
     await supabase.from("bolsas").delete().in("id", bolsasToDelete);
   }
 
-  // 3. Upsert bolsas (insertar nuevas + actualizar existentes, sin tocar acumulado de existentes)
-  if (updated.bolsas.length > 0) {
-    for (const b of updated.bolsas) {
-      if (existingBolsaIds.has(b.id)) {
-        // Actualizar solo nombre, porcentaje y color — NO tocar acumulado
-        await supabase
-          .from("bolsas")
-          .update({ nombre: b.nombre, porcentaje: b.porcentaje, color: b.color })
-          .eq("id", b.id);
-      } else {
-        // Insertar nueva bolsa
-        await supabase.from("bolsas").insert({
-          id: b.id,
-          salon_id: updated.id,
-          nombre: b.nombre,
-          porcentaje: b.porcentaje,
-          color: b.color,
-          acumulado: b.acumulado,
-        });
-      }
+  // 3. Upsert bolsas (insertar nuevas + actualizar existentes, sin tocar acumulado)
+  for (const b of updated.bolsas) {
+    if (existingBolsaIds.has(b.id)) {
+      await supabase
+        .from("bolsas")
+        .update({ nombre: b.nombre, porcentaje: b.porcentaje, color: b.color })
+        .eq("id", b.id);
+    } else {
+      await supabase.from("bolsas").insert({
+        id: b.id,
+        salon_id: updated.id,
+        nombre: b.nombre,
+        porcentaje: b.porcentaje,
+        color: b.color,
+        acumulado: b.acumulado,
+      });
     }
   }
 
-  // 4. Actualizar datos del salón (ahora bolsa_default_gastos_id apunta a un ID válido)
+  // 4. Actualizar datos del salón (ahora las bolsas existen, FK es válida)
   await supabase
     .from("salones")
     .update({
@@ -183,7 +199,7 @@ export async function updateSalon(updated: Salon): Promise<void> {
     })
     .eq("id", updated.id);
 
-  // 5. Reemplazar gastos fijos (no tienen FK cascading, safe to delete+insert)
+  // 5. Reemplazar gastos fijos
   await supabase.from("gastos_fijos").delete().eq("salon_id", updated.id);
   if (updated.gastosFijos.length > 0) {
     await supabase.from("gastos_fijos").insert(
@@ -276,8 +292,21 @@ export async function getCierres(salonId: string): Promise<CierreSemana[]> {
 export async function addCierre(
   salonId: string,
   cierre: CierreSemana
-): Promise<void> {
-  await supabase.from("cierres").insert({
+): Promise<boolean> {
+  // Verificar que no se haya cerrado ya esta semana (evita doble-click)
+  const { data: existing } = await supabase
+    .from("cierres")
+    .select("id")
+    .eq("salon_id", salonId)
+    .eq("semana_inicio", cierre.semanaInicio)
+    .limit(1);
+
+  if (existing && existing.length > 0) {
+    console.warn("Cierre already exists for this week, skipping");
+    return false;
+  }
+
+  const { error } = await supabase.from("cierres").insert({
     salon_id: salonId,
     fecha: cierre.fecha,
     semana_inicio: cierre.semanaInicio,
@@ -287,6 +316,12 @@ export async function addCierre(
     libre: cierre.libre,
     bolsas: cierre.bolsas,
   });
+
+  if (error) {
+    console.error("Error adding cierre:", error);
+    return false;
+  }
+  return true;
 }
 
 // ── Gastos Admin CRUD ──
@@ -557,7 +592,12 @@ async function deduplicarSalones(): Promise<void> {
 
   if (idsToDelete.length === 0) return;
 
-  // CASCADE debería limpiar hijos, pero por seguridad borramos explícitamente
+  // Primero quitar FK bolsa_default_gastos_id de los salones a borrar
+  for (const id of idsToDelete) {
+    await supabase.from("salones").update({ bolsa_default_gastos_id: null }).eq("id", id);
+  }
+
+  // Borrar hijos en orden correcto
   await supabase.from("movimientos_bolsa").delete().in("salon_id", idsToDelete);
   await supabase.from("gastos_admin").delete().in("salon_id", idsToDelete);
   await supabase.from("cierres").delete().in("salon_id", idsToDelete);

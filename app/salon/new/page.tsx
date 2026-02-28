@@ -35,7 +35,12 @@ export default function NuevoSalonPage() {
       createdAt: new Date().toISOString(),
     };
 
-    await addSalon(salon);
+    const ok = await addSalon(salon);
+    if (!ok) {
+      setCreating(false);
+      alert("Error al crear el salón. Intenta de nuevo.");
+      return;
+    }
     router.push(`/salon/${salon.id}`);
   };
 

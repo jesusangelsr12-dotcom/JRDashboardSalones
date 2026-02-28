@@ -82,7 +82,13 @@ export default function BolsasSection({
       })),
     };
 
-    await addCierre(salon.id, cierre);
+    const added = await addCierre(salon.id, cierre);
+    if (!added) {
+      // Cierre ya existía o error — no duplicar acumulados
+      setClosingSemana(null);
+      onCierreCompleto();
+      return;
+    }
 
     // Update acumulados: sum bolsa allocation and subtract assigned gastos
     const acumulados = await getAcumulados(salon.id);
