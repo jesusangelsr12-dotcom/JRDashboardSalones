@@ -58,7 +58,7 @@ function mapSalon(row: SalonRow): Salon {
 
 // ── Salones CRUD ──
 
-export async function getSalones(): Promise<Salon[]> {
+export async function getSalones(): Promise<{ salones: Salon[]; error: boolean }> {
   const { data, error } = await supabase
     .from("salones")
     .select("*, bolsas(*), gastos_fijos(*)")
@@ -66,10 +66,10 @@ export async function getSalones(): Promise<Salon[]> {
 
   if (error) {
     console.error("Error fetching salones:", error);
-    return [];
+    return { salones: [], error: true };
   }
 
-  return (data as unknown as SalonRow[]).map(mapSalon);
+  return { salones: (data as unknown as SalonRow[]).map(mapSalon), error: false };
 }
 
 export async function getSalon(id: string): Promise<Salon | undefined> {
@@ -433,7 +433,8 @@ export async function seedSalones(): Promise<Salon[]> {
 // ── Inicializar store ──
 
 export async function initStore(): Promise<Salon[]> {
-  const existing = await getSalones();
-  if (existing.length > 0) return existing;
+  const { salones, error } = await getSalones();
+  if (error) return [];
+  if (salones.length > 0) return salones;
   return seedSalones();
 }
