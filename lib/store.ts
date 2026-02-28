@@ -549,7 +549,18 @@ export async function seedSalones(): Promise<Salon[]> {
 
 // ── Inicializar store ──
 
-export async function initStore(): Promise<Salon[]> {
+let _initPromise: Promise<Salon[]> | null = null;
+
+export function initStore(): Promise<Salon[]> {
+  if (!_initPromise) {
+    _initPromise = _doInitStore().finally(() => {
+      _initPromise = null;
+    });
+  }
+  return _initPromise;
+}
+
+async function _doInitStore(): Promise<Salon[]> {
   const { salones, error } = await getSalones();
   if (error) return [];
   if (salones.length > 0) return salones;
