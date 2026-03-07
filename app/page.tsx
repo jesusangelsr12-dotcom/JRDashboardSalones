@@ -43,7 +43,8 @@ export default function Home() {
       const total = calcularIngresosMes(
         citas,
         hoy.getFullYear(),
-        hoy.getMonth()
+        hoy.getMonth(),
+        salon.comisionTarjeta ?? 0
       );
       setIngresos((prev) => ({ ...prev, [salon.id]: total }));
     } catch {

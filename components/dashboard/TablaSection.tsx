@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { Cita, Gasto } from "@/lib/types";
+import type { Cita, Gasto, MovimientoBolsa, Bolsa } from "@/lib/types";
 import { formatMoney, fechaCorta, mesesDisponibles } from "@/lib/calculations";
 
 interface TablaSectionProps {
   citas: Cita[];
   gastos: Gasto[];
+  movimientos: MovimientoBolsa[];
+  bolsas: Bolsa[];
   salonColor: string;
 }
 
@@ -26,6 +28,8 @@ interface TransaccionRow {
 export default function TablaSection({
   citas,
   gastos,
+  movimientos,
+  bolsas,
   salonColor,
 }: TablaSectionProps) {
   const [filter, setFilter] = useState<FilterType>("todo");
@@ -55,7 +59,22 @@ export default function TablaSection({
       source: g.source,
     }));
 
-    let all = [...citaRows, ...gastoRows].sort(
+    // Movimientos de bolsa
+    const bolsaNames: Record<string, string> = {};
+    bolsas.forEach((b) => { bolsaNames[b.id] = b.nombre; });
+
+    const movRows: TransaccionRow[] = movimientos.map((m) => ({
+      id: `mov-${m.id}`,
+      tipo: m.tipo === "ingreso" ? "cita" : "gasto",
+      fecha: new Date(m.fecha + "T00:00:00"),
+      descripcion: m.descripcion || `Movimiento ${m.tipo}`,
+      monto: m.tipo === "ingreso" ? m.monto : -m.monto,
+      metodo: m.metodoPago,
+      source: "bolsa",
+      detalle: bolsaNames[m.bolsaId] ? `Bolsa: ${bolsaNames[m.bolsaId]}` : undefined,
+    }));
+
+    let all = [...citaRows, ...gastoRows, ...movRows].sort(
       (a, b) => b.fecha.getTime() - a.fecha.getTime()
     );
 
@@ -80,7 +99,7 @@ export default function TablaSection({
     }
 
     return all;
-  }, [citas, gastos, filter, search, mesFilter]);
+  }, [citas, gastos, movimientos, bolsas, filter, search, mesFilter]);
 
   const filters: { id: FilterType; label: string }[] = [
     { id: "todo", label: "Todo" },
@@ -182,6 +201,11 @@ export default function TablaSection({
                   {row.source === "admin" && (
                     <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 flex-shrink-0">
                       Admin
+                    </span>
+                  )}
+                  {row.source === "bolsa" && (
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 flex-shrink-0">
+                      Bolsa
                     </span>
                   )}
                 </div>

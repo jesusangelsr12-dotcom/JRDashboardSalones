@@ -10,6 +10,7 @@ interface SalonRow {
   color: string;
   sheet_id: string;
   bolsa_default_gastos_id: string | null;
+  comision_tarjeta: number;
   created_at: string;
   bolsas: BolsaRow[];
   gastos_fijos: GastoFijoRow[];
@@ -39,6 +40,7 @@ function mapSalon(row: SalonRow): Salon {
     color: row.color,
     sheetId: row.sheet_id,
     bolsaDefaultGastosId: row.bolsa_default_gastos_id || null,
+    comisionTarjeta: row.comision_tarjeta ?? 0,
     bolsas: (row.bolsas || []).map((b) => ({
       id: b.id,
       nombre: b.nombre,
@@ -91,6 +93,7 @@ export async function addSalon(salon: Salon): Promise<boolean> {
     color: salon.color,
     sheet_id: salon.sheetId,
     bolsa_default_gastos_id: null,
+    comision_tarjeta: salon.comisionTarjeta ?? 0,
     created_at: salon.createdAt,
   });
 
@@ -196,6 +199,7 @@ export async function updateSalon(updated: Salon): Promise<void> {
       color: updated.color,
       sheet_id: updated.sheetId,
       bolsa_default_gastos_id: updated.bolsaDefaultGastosId,
+      comision_tarjeta: updated.comisionTarjeta ?? 0,
     })
     .eq("id", updated.id);
 
@@ -549,6 +553,7 @@ async function seedSalonesIfEmpty(): Promise<Salon[]> {
         { id: uuidv4(), nombre: "Internet", monto: 600, frecuencia: "mensual" },
       ],
       bolsaDefaultGastosId: null,
+      comisionTarjeta: 0,
       createdAt: new Date().toISOString(),
     },
     {
@@ -567,6 +572,7 @@ async function seedSalonesIfEmpty(): Promise<Salon[]> {
         { id: uuidv4(), nombre: "Agua", monto: 400, frecuencia: "mensual" },
       ],
       bolsaDefaultGastosId: null,
+      comisionTarjeta: 0,
       createdAt: new Date().toISOString(),
     },
   ];

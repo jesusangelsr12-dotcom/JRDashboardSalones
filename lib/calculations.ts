@@ -7,7 +7,16 @@ import type {
   ResumenSemanal,
   DatosGraficas,
   SemanaDetectada,
+  MetodoPago,
 } from "./types";
+
+/** Aplica comisión de terminal a pagos con tarjeta */
+export function costoNeto(costo: number, metodoPago: MetodoPago, comisionTarjeta: number): number {
+  if (metodoPago === "Tarjeta" && comisionTarjeta > 0) {
+    return costo * (1 - comisionTarjeta / 100);
+  }
+  return costo;
+}
 
 // ── Helpers de fechas ──
 
@@ -84,7 +93,8 @@ export function calcularResumenSemanal(
   bolsas: Bolsa[],
   gastosFijos: GastoFijo[],
   acumulados: Record<string, number>,
-  bolsaDefaultGastosId: string | null
+  bolsaDefaultGastosId: string | null,
+  comisionTarjeta: number = 0
 ): ResumenSemanal {
   const hoy = new Date();
   const lunesSemana = getLunesDeSemana(hoy);
@@ -94,8 +104,8 @@ export function calcularResumenSemanal(
   const citasSemana = enRango(citas, lunesSemana, domingoSemana);
   const gastosSemana = enRango(gastos, lunesSemana, domingoSemana);
 
-  // Ingresos
-  const ingresos = citasSemana.reduce((sum, c) => sum + c.costo, 0);
+  // Ingresos (neto después de comisión tarjeta)
+  const ingresos = citasSemana.reduce((sum, c) => sum + costoNeto(c.costo, c.metodoPago, comisionTarjeta), 0);
 
   // Gastos variables (solo para info, NO restan de libre)
   const gastosVariables = gastosSemana.reduce((sum, g) => sum + g.monto, 0);
@@ -112,7 +122,7 @@ export function calcularResumenSemanal(
   // Desglose por método de pago
   const porMetodo = { Efectivo: 0, Tarjeta: 0, Transferencia: 0 };
   citasSemana.forEach((c) => {
-    porMetodo[c.metodoPago] += c.costo;
+    porMetodo[c.metodoPago] += costoNeto(c.costo, c.metodoPago, comisionTarjeta);
   });
 
   // Calcular gastos asignados a cada bolsa
@@ -154,7 +164,8 @@ export function calcularResumenParaSemana(
   gastosFijos: GastoFijo[],
   lunesISO: string,
   domingoISO: string,
-  bolsaDefaultGastosId: string | null
+  bolsaDefaultGastosId: string | null,
+  comisionTarjeta: number = 0
 ): { ingresos: number; gastosVariables: number; gastosFijos: number; libre: number; gastosPorBolsa: Record<string, number> } {
   const inicio = new Date(lunesISO + "T00:00:00");
   const fin = new Date(domingoISO + "T23:59:59.999");
@@ -162,7 +173,7 @@ export function calcularResumenParaSemana(
   const citasSemana = enRango(citas, inicio, fin);
   const gastosSemana = enRango(gastos, inicio, fin);
 
-  const ingresos = citasSemana.reduce((sum, c) => sum + c.costo, 0);
+  const ingresos = citasSemana.reduce((sum, c) => sum + costoNeto(c.costo, c.metodoPago, comisionTarjeta), 0);
   const gastosVariables = gastosSemana.reduce((sum, g) => sum + g.monto, 0);
   const gastosFijosSemana = gastosFijos.reduce((sum, gf) => {
     return sum + (gf.frecuencia === "semanal" ? gf.monto : gf.monto / 4);
@@ -187,7 +198,8 @@ export function detectarSemanas(
   gastos: Gasto[],
   gastosFijos: GastoFijo[],
   cierres: CierreSemana[],
-  bolsaDefaultGastosId: string | null
+  bolsaDefaultGastosId: string | null,
+  comisionTarjeta: number = 0
 ): SemanaDetectada[] {
   const semanasSet = new Set<string>();
 
@@ -214,7 +226,7 @@ export function detectarSemanas(
       const domingoISO = domingo.toISOString().split("T")[0];
 
       const datos = calcularResumenParaSemana(
-        citas, gastos, gastosFijos, lunesISO, domingoISO, bolsaDefaultGastosId
+        citas, gastos, gastosFijos, lunesISO, domingoISO, bolsaDefaultGastosId, comisionTarjeta
       );
 
       return {
@@ -237,11 +249,12 @@ export function detectarSemanas(
 export function calcularIngresosMes(
   citas: Cita[],
   year: number,
-  month: number
+  month: number,
+  comisionTarjeta: number = 0
 ): number {
   const inicio = getInicioMes(year, month);
   const fin = getFinMes(year, month);
-  return enRango(citas, inicio, fin).reduce((sum, c) => sum + c.costo, 0);
+  return enRango(citas, inicio, fin).reduce((sum, c) => sum + costoNeto(c.costo, c.metodoPago, comisionTarjeta), 0);
 }
 
 // ── Datos para gráficas (mes específico) ──
@@ -250,7 +263,8 @@ export function calcularDatosGraficas(
   citas: Cita[],
   gastos: Gasto[],
   year: number,
-  month: number
+  month: number,
+  comisionTarjeta: number = 0
 ): DatosGraficas {
   const inicioMes = getInicioMes(year, month);
   const finMes = getFinMes(year, month);
@@ -258,7 +272,7 @@ export function calcularDatosGraficas(
   const citasMes = enRango(citas, inicioMes, finMes);
   const gastosMes = enRango(gastos, inicioMes, finMes);
 
-  return _calcularGraficasInternas(citas, citasMes, gastosMes, year, month);
+  return _calcularGraficasInternas(citas, citasMes, gastosMes, year, month, comisionTarjeta);
 }
 
 // ── Datos para gráficas (año completo) ──
@@ -266,7 +280,8 @@ export function calcularDatosGraficas(
 export function calcularDatosGraficasAnual(
   citas: Cita[],
   gastos: Gasto[],
-  year: number
+  year: number,
+  comisionTarjeta: number = 0
 ): DatosGraficas {
   const inicio = new Date(year, 0, 1, 0, 0, 0, 0);
   const fin = new Date(year, 11, 31, 23, 59, 59, 999);
@@ -274,7 +289,7 @@ export function calcularDatosGraficasAnual(
   const citasAnio = enRango(citas, inicio, fin);
   const gastosAnio = enRango(gastos, inicio, fin);
 
-  return _calcularGraficasInternas(citas, citasAnio, gastosAnio, year, new Date().getMonth());
+  return _calcularGraficasInternas(citas, citasAnio, gastosAnio, year, new Date().getMonth(), comisionTarjeta);
 }
 
 function _calcularGraficasInternas(
@@ -282,14 +297,15 @@ function _calcularGraficasInternas(
   citasFiltradas: Cita[],
   gastosFiltrados: Gasto[],
   year: number,
-  month: number
+  month: number,
+  comisionTarjeta: number = 0
 ): DatosGraficas {
   // ── Ingresos por semana ──
   const semanaMap = new Map<string, number>();
   citasFiltradas.forEach((c) => {
     const lunes = getLunesDeSemana(c.fecha);
     const key = `${lunes.getDate()}/${lunes.getMonth() + 1}`;
-    semanaMap.set(key, (semanaMap.get(key) || 0) + c.costo);
+    semanaMap.set(key, (semanaMap.get(key) || 0) + costoNeto(c.costo, c.metodoPago, comisionTarjeta));
   });
   const ingresosPorSemana = Array.from(semanaMap.entries())
     .map(([semana, total]) => ({ semana, total }))
@@ -350,7 +366,7 @@ function _calcularGraficasInternas(
   citasFiltradas.forEach((c) => {
     clientaGastoMap.set(
       c.clienta,
-      (clientaGastoMap.get(c.clienta) || 0) + c.costo
+      (clientaGastoMap.get(c.clienta) || 0) + costoNeto(c.costo, c.metodoPago, comisionTarjeta)
     );
   });
   const topClientasPorGasto = Array.from(clientaGastoMap.entries())
@@ -361,7 +377,7 @@ function _calcularGraficasInternas(
   // ── Distribución por método de pago ──
   const metodoMap = new Map<string, number>();
   citasFiltradas.forEach((c) => {
-    metodoMap.set(c.metodoPago, (metodoMap.get(c.metodoPago) || 0) + c.costo);
+    metodoMap.set(c.metodoPago, (metodoMap.get(c.metodoPago) || 0) + costoNeto(c.costo, c.metodoPago, comisionTarjeta));
   });
   const distribucionMetodo = Array.from(metodoMap.entries())
     .map(([metodo, total]) => ({ metodo, total }))
@@ -374,7 +390,7 @@ function _calcularGraficasInternas(
     const mInicio = getInicioMes(d.getFullYear(), d.getMonth());
     const mFin = getFinMes(d.getFullYear(), d.getMonth());
     const total = enRango(allCitas, mInicio, mFin).reduce(
-      (sum, c) => sum + c.costo,
+      (sum, c) => sum + costoNeto(c.costo, c.metodoPago, comisionTarjeta),
       0
     );
     const mesLabel = d.toLocaleDateString("es-MX", {

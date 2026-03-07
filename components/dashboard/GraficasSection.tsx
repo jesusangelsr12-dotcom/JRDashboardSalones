@@ -18,6 +18,7 @@ interface GraficasSectionProps {
   citas: Cita[];
   gastos: Gasto[];
   salonColor: string;
+  comisionTarjeta?: number;
 }
 
 type MainTab = "mensual" | "anual";
@@ -34,6 +35,7 @@ export default function GraficasSection({
   citas,
   gastos,
   salonColor,
+  comisionTarjeta = 0,
 }: GraficasSectionProps) {
   const [mainTab, setMainTab] = useState<MainTab>("mensual");
   const [view, setView] = useState<ChartView>("evolucion");
@@ -55,10 +57,10 @@ export default function GraficasSection({
   // Calculate chart data based on tab
   const datos: DatosGraficas = useMemo(() => {
     if (mainTab === "mensual") {
-      return calcularDatosGraficas(citas, gastos, selectedMes.year, selectedMes.month);
+      return calcularDatosGraficas(citas, gastos, selectedMes.year, selectedMes.month, comisionTarjeta);
     }
-    return calcularDatosGraficasAnual(citas, gastos, selectedAnio);
-  }, [mainTab, citas, gastos, selectedMes, selectedAnio]);
+    return calcularDatosGraficasAnual(citas, gastos, selectedAnio, comisionTarjeta);
+  }, [mainTab, citas, gastos, selectedMes, selectedAnio, comisionTarjeta]);
 
   const periodLabel = mainTab === "mensual" ? selectedMes.label : String(selectedAnio);
 

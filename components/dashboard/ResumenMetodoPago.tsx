@@ -1,13 +1,14 @@
 "use client";
 
 import type { Cita, Gasto, MovimientoBolsa } from "@/lib/types";
-import { formatMoney } from "@/lib/calculations";
+import { formatMoney, costoNeto } from "@/lib/calculations";
 
 interface ResumenMetodoPagoProps {
   citas: Cita[];
   gastos: Gasto[];
   movimientos: MovimientoBolsa[];
   salonColor: string;
+  comisionTarjeta?: number;
 }
 
 const METODO_ICONS: Record<string, string> = {
@@ -27,14 +28,15 @@ export default function ResumenMetodoPago({
   gastos,
   movimientos,
   salonColor,
+  comisionTarjeta = 0,
 }: ResumenMetodoPagoProps) {
   // Calcular entradas por método (citas + ingresos de movimientos)
   const entradas: Record<string, number> = { Efectivo: 0, Tarjeta: 0, Transferencia: 0 };
   const salidas: Record<string, number> = { Efectivo: 0, Tarjeta: 0, Transferencia: 0 };
 
-  // Ingresos de citas
+  // Ingresos de citas (neto después de comisión)
   citas.forEach((c) => {
-    entradas[c.metodoPago] = (entradas[c.metodoPago] || 0) + c.costo;
+    entradas[c.metodoPago] = (entradas[c.metodoPago] || 0) + costoNeto(c.costo, c.metodoPago, comisionTarjeta);
   });
 
   // Gastos (sheets + admin)

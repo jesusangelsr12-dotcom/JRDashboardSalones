@@ -50,7 +50,7 @@ export default function BolsasSection({
       setYaCerrada(cierres.some((c) => c.semanaInicio === lunesActual));
 
       const detected = detectarSemanas(
-        citas, gastos, salon.gastosFijos, cierres, salon.bolsaDefaultGastosId
+        citas, gastos, salon.gastosFijos, cierres, salon.bolsaDefaultGastosId, salon.comisionTarjeta ?? 0
       );
       setSemanas(detected.reverse()); // Más recientes primero
     }
@@ -63,7 +63,7 @@ export default function BolsasSection({
     const datos = calcularResumenParaSemana(
       citas, gastos, salon.gastosFijos,
       semana.semanaInicio, semana.semanaFin,
-      salon.bolsaDefaultGastosId
+      salon.bolsaDefaultGastosId, salon.comisionTarjeta ?? 0
     );
 
     const libre = datos.libre;
@@ -111,7 +111,7 @@ export default function BolsasSection({
     // Refresh semanas
     const cierres = await getCierres(salon.id);
     const detected = detectarSemanas(
-      citas, gastos, salon.gastosFijos, cierres, salon.bolsaDefaultGastosId
+      citas, gastos, salon.gastosFijos, cierres, salon.bolsaDefaultGastosId, salon.comisionTarjeta ?? 0
     );
     setSemanas(detected.reverse());
     onCierreCompleto();
@@ -202,6 +202,7 @@ export default function BolsasSection({
           gastos={gastos}
           movimientos={movimientos}
           salonColor={salonColor}
+          comisionTarjeta={salon.comisionTarjeta ?? 0}
         />
       </div>
 

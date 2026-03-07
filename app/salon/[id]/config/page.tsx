@@ -23,6 +23,7 @@ export default function SalonConfigPage() {
   const [bolsas, setBolsas] = useState<Bolsa[]>([]);
   const [gastosFijos, setGastosFijos] = useState<GastoFijo[]>([]);
   const [bolsaDefaultGastosId, setBolsaDefaultGastosId] = useState<string | null>(null);
+  const [comisionTarjeta, setComisionTarjeta] = useState(0);
   const [showDelete, setShowDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -39,6 +40,7 @@ export default function SalonConfigPage() {
         setBolsas(s.bolsas);
         setGastosFijos(s.gastosFijos);
         setBolsaDefaultGastosId(s.bolsaDefaultGastosId);
+        setComisionTarjeta(s.comisionTarjeta ?? 0);
       }
     }
     load();
@@ -55,6 +57,7 @@ export default function SalonConfigPage() {
       bolsas,
       gastosFijos,
       bolsaDefaultGastosId,
+      comisionTarjeta,
     };
     await updateSalon(updated);
     setSaving(false);
@@ -209,6 +212,27 @@ export default function SalonConfigPage() {
               placeholder="1BxiM..."
               className="w-full bg-bg border border-border rounded-[8px] px-3 py-2 text-[13px] font-mono text-text-primary placeholder:text-text-secondary/40 outline-none focus:border-text-secondary transition-colors"
             />
+          </div>
+
+          <div>
+            <label className="text-[12px] font-display text-text-secondary mb-1 block">
+              Comisión terminal tarjeta (%)
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={comisionTarjeta}
+                onChange={(e) => setComisionTarjeta(Number(e.target.value))}
+                step="0.1"
+                min="0"
+                max="100"
+                className="w-24 bg-bg border border-border rounded-[8px] px-3 py-2 text-[14px] font-mono text-text-primary outline-none focus:border-text-secondary transition-colors"
+              />
+              <span className="text-[12px] text-text-secondary font-mono">%</span>
+            </div>
+            <p className="text-[11px] text-text-secondary/60 font-display mt-1">
+              Se descuenta automáticamente de pagos con tarjeta
+            </p>
           </div>
         </div>
       </section>

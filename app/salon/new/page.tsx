@@ -32,6 +32,7 @@ export default function NuevoSalonPage() {
       bolsas: crearBolsasPlantilla(),
       gastosFijos: [],
       bolsaDefaultGastosId: null,
+      comisionTarjeta: 0,
       createdAt: new Date().toISOString(),
     };
 

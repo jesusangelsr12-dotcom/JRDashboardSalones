@@ -8,6 +8,7 @@ export interface Salon {
   bolsas: Bolsa[];
   gastosFijos: GastoFijo[];
   bolsaDefaultGastosId: string | null;
+  comisionTarjeta: number;
   createdAt: string;
 }
 

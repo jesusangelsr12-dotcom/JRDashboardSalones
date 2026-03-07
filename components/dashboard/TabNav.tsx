@@ -1,6 +1,6 @@
 "use client";
 
-export type TabId = "resumen" | "bolsas" | "graficas" | "tabla";
+export type TabId = "resumen" | "bolsas" | "graficas" | "tabla" | "finanzas";
 
 interface TabNavProps {
   active: TabId;
@@ -13,6 +13,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "bolsas", label: "Bolsas" },
   { id: "graficas", label: "Gráficas" },
   { id: "tabla", label: "Tabla" },
+  { id: "finanzas", label: "Finanzas" },
 ];
 
 export default function TabNav({ active, onChange, salonColor }: TabNavProps) {
@@ -24,7 +25,7 @@ export default function TabNav({ active, onChange, salonColor }: TabNavProps) {
           <button
             key={tab.id}
             onClick={() => onChange(tab.id)}
-            className={`flex-1 py-2 text-[13px] font-display font-medium rounded-[8px] transition-all duration-200 ${
+            className={`flex-1 py-2 text-[11px] font-display font-medium rounded-[8px] transition-all duration-200 ${
               isActive
                 ? "text-white shadow-sm"
                 : "text-text-secondary hover:text-text-primary"

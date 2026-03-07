@@ -14,6 +14,7 @@ import ResumenSemanal from "@/components/dashboard/ResumenSemanal";
 import BolsasSection from "@/components/dashboard/BolsasSection";
 import GraficasSection from "@/components/dashboard/GraficasSection";
 import TablaSection from "@/components/dashboard/TablaSection";
+import EstadoResultados from "@/components/dashboard/EstadoResultados";
 import GastoAdminModal from "@/components/dashboard/GastoAdminModal";
 import MovimientoBolsaModal from "@/components/dashboard/MovimientoBolsaModal";
 import FadeIn from "@/components/motion/FadeIn";
@@ -100,7 +101,7 @@ export default function SalonDashboard() {
       const acumulados = await getAcumulados(salon.id);
       const r = calcularResumenSemanal(
         allCitas, allGastos, salon.bolsas, salon.gastosFijos,
-        acumulados, salon.bolsaDefaultGastosId
+        acumulados, salon.bolsaDefaultGastosId, salon.comisionTarjeta ?? 0
       );
       setResumen(r);
     } catch (err) {
@@ -108,7 +109,7 @@ export default function SalonDashboard() {
       const acumulados = await getAcumulados(salon.id);
       const r = calcularResumenSemanal(
         [], [], salon.bolsas, salon.gastosFijos,
-        acumulados, salon.bolsaDefaultGastosId
+        acumulados, salon.bolsaDefaultGastosId, salon.comisionTarjeta ?? 0
       );
       setResumen(r);
     } finally {
@@ -202,6 +203,7 @@ export default function SalonDashboard() {
               citas={citas}
               gastos={gastos}
               salonColor={salon.color}
+              comisionTarjeta={salon.comisionTarjeta ?? 0}
             />
           )}
 
@@ -209,7 +211,20 @@ export default function SalonDashboard() {
             <TablaSection
               citas={citas}
               gastos={gastos}
+              movimientos={movimientos}
+              bolsas={salon.bolsas}
               salonColor={salon.color}
+            />
+          )}
+
+          {activeTab === "finanzas" && (
+            <EstadoResultados
+              citas={citas}
+              gastos={gastos}
+              gastosFijos={salon.gastosFijos}
+              comisionTarjeta={salon.comisionTarjeta ?? 0}
+              salonColor={salon.color}
+              salonNombre={salon.nombre}
             />
           )}
         </FadeIn>
