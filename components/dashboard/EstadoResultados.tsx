@@ -274,8 +274,8 @@ export default function EstadoResultados({
         {/* Gastos fijos */}
         <div className="space-y-1.5 mb-2">
           <Row label="(-) Gastos fijos" value={-estado.gastosFijosMonto} negative />
-          {estado.detalleGastosFijos.map((gf) => (
-            <SubRow key={gf.nombre} label={gf.nombre} value={gf.monto} />
+          {estado.detalleGastosFijos.map((gf, i) => (
+            <SubRow key={gf.nombre || i} label={gf.nombre || "Sin nombre"} value={gf.monto} />
           ))}
         </div>
 
