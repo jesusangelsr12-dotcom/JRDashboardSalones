@@ -113,10 +113,12 @@ export default function EstadoResultados({
       const fin = new Date(selectedAnio, 11, 31, 23, 59, 59, 999);
       citasPeriodo = citas.filter((c) => c.fecha >= inicio && c.fecha <= fin);
       gastosPeriodo = gastos.filter((g) => g.fecha >= inicio && g.fecha <= fin);
-      // YTD: prorate fixed expenses based on months elapsed
+      // Prorate fixed expenses: calculate actual weeks elapsed
       const esAnioActual = selectedAnio === hoy.getFullYear();
       const mesesTranscurridos = esAnioActual ? hoy.getMonth() + 1 : 12;
-      const semanasTranscurridas = Math.round(mesesTranscurridos * 4.33);
+      const finPeriodo = esAnioActual ? hoy : fin;
+      const msTranscurridos = finPeriodo.getTime() - inicio.getTime();
+      const semanasTranscurridas = Math.floor(msTranscurridos / (7 * 24 * 60 * 60 * 1000));
       gastosFijosMonto = gastosFijos.reduce((sum, gf) => {
         return sum + (gf.frecuencia === "mensual"
           ? gf.monto * mesesTranscurridos
@@ -153,10 +155,13 @@ export default function EstadoResultados({
       } else if (modo === "semana") {
         monto = gf.frecuencia === "semanal" ? gf.monto : gf.monto / 4;
       } else {
-        // anual — prorrateo igual al cálculo de gastosFijosMonto
+        // anual — prorrateo con semanas reales
         const esYTD = selectedAnio === hoy.getFullYear();
         const mTransc = esYTD ? hoy.getMonth() + 1 : 12;
-        const sTransc = Math.round(mTransc * 4.33);
+        const inicioAnio = new Date(selectedAnio!, 0, 1, 0, 0, 0, 0);
+        const finAnio = new Date(selectedAnio!, 11, 31, 23, 59, 59, 999);
+        const finP = esYTD ? hoy : finAnio;
+        const sTransc = Math.floor((finP.getTime() - inicioAnio.getTime()) / (7 * 24 * 60 * 60 * 1000));
         monto = gf.frecuencia === "mensual" ? gf.monto * mTransc : gf.monto * sTransc;
       }
       return { nombre: gf.nombre, monto };
