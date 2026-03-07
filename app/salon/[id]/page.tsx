@@ -214,6 +214,7 @@ export default function SalonDashboard() {
               movimientos={movimientos}
               bolsas={salon.bolsas}
               salonColor={salon.color}
+              comisionTarjeta={salon.comisionTarjeta ?? 0}
             />
           )}
 

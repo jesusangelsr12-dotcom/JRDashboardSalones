@@ -6,7 +6,7 @@ import {
   formatMoney,
   costoNeto,
   mesesDisponibles,
-  detectarSemanas,
+  aniosDisponibles,
   getInicioMes,
   getFinMes,
 } from "@/lib/calculations";
@@ -20,7 +20,7 @@ interface EstadoResultadosProps {
   salonNombre: string;
 }
 
-type Modo = "mes" | "semana";
+type Modo = "mes" | "semana" | "anual";
 
 export default function EstadoResultados({
   citas,
@@ -64,6 +64,9 @@ export default function EstadoResultados({
     });
   }, [citas, gastos]);
 
+  // Available years
+  const anios = useMemo(() => aniosDisponibles(citas, gastos), [citas, gastos]);
+
   // Current period index
   const hoy = new Date();
   const currentMesIdx = meses.findIndex(
@@ -71,9 +74,12 @@ export default function EstadoResultados({
   );
   const [mesIdx, setMesIdx] = useState(Math.max(currentMesIdx, meses.length - 1));
   const [semIdx, setSemIdx] = useState(0); // 0 = most recent
+  const currentAnioIdx = anios.indexOf(hoy.getFullYear());
+  const [anioIdx, setAnioIdx] = useState(Math.max(currentAnioIdx, anios.length - 1));
 
   const selectedMes = meses[mesIdx];
   const selectedSem = semanas[semIdx];
+  const selectedAnio = anios[anioIdx];
 
   // Calculate Estado de Resultados
   const estado = useMemo(() => {
@@ -102,6 +108,21 @@ export default function EstadoResultados({
         return sum + (gf.frecuencia === "semanal" ? gf.monto : gf.monto / 4);
       }, 0);
       periodoLabel = selectedSem.label;
+    } else if (modo === "anual" && selectedAnio) {
+      const inicio = new Date(selectedAnio, 0, 1, 0, 0, 0, 0);
+      const fin = new Date(selectedAnio, 11, 31, 23, 59, 59, 999);
+      citasPeriodo = citas.filter((c) => c.fecha >= inicio && c.fecha <= fin);
+      gastosPeriodo = gastos.filter((g) => g.fecha >= inicio && g.fecha <= fin);
+      // YTD: prorate fixed expenses based on months elapsed
+      const esAnioActual = selectedAnio === hoy.getFullYear();
+      const mesesTranscurridos = esAnioActual ? hoy.getMonth() + 1 : 12;
+      const semanasTranscurridas = Math.round(mesesTranscurridos * 4.33);
+      gastosFijosMonto = gastosFijos.reduce((sum, gf) => {
+        return sum + (gf.frecuencia === "mensual"
+          ? gf.monto * mesesTranscurridos
+          : gf.monto * semanasTranscurridas);
+      }, 0);
+      periodoLabel = esAnioActual ? `${selectedAnio} (Year-to-Date)` : `${selectedAnio}`;
     } else {
       return null;
     }
@@ -125,12 +146,21 @@ export default function EstadoResultados({
     });
 
     // Desglose gastos fijos
-    const detalleGastosFijos = gastosFijos.map((gf) => ({
-      nombre: gf.nombre,
-      monto: modo === "mes"
-        ? (gf.frecuencia === "mensual" ? gf.monto : gf.monto * 4)
-        : (gf.frecuencia === "semanal" ? gf.monto : gf.monto / 4),
-    }));
+    const detalleGastosFijos = gastosFijos.map((gf) => {
+      let monto: number;
+      if (modo === "mes") {
+        monto = gf.frecuencia === "mensual" ? gf.monto : gf.monto * 4;
+      } else if (modo === "semana") {
+        monto = gf.frecuencia === "semanal" ? gf.monto : gf.monto / 4;
+      } else {
+        // anual — prorrateo igual al cálculo de gastosFijosMonto
+        const esYTD = selectedAnio === hoy.getFullYear();
+        const mTransc = esYTD ? hoy.getMonth() + 1 : 12;
+        const sTransc = Math.round(mTransc * 4.33);
+        monto = gf.frecuencia === "mensual" ? gf.monto * mTransc : gf.monto * sTransc;
+      }
+      return { nombre: gf.nombre, monto };
+    });
 
     return {
       periodoLabel,
@@ -144,26 +174,28 @@ export default function EstadoResultados({
       margenOperativo,
       porMetodo,
     };
-  }, [citas, gastos, gastosFijos, comisionTarjeta, modo, mesIdx, semIdx, selectedMes, selectedSem]);
+  }, [citas, gastos, gastosFijos, comisionTarjeta, modo, mesIdx, semIdx, anioIdx, selectedMes, selectedSem, selectedAnio]);
 
   if (!estado) return null;
 
   const navPrev = () => {
     if (modo === "mes" && mesIdx > 0) setMesIdx(mesIdx - 1);
     if (modo === "semana" && semIdx < semanas.length - 1) setSemIdx(semIdx + 1);
+    if (modo === "anual" && anioIdx > 0) setAnioIdx(anioIdx - 1);
   };
   const navNext = () => {
     if (modo === "mes" && mesIdx < meses.length - 1) setMesIdx(mesIdx + 1);
     if (modo === "semana" && semIdx > 0) setSemIdx(semIdx - 1);
+    if (modo === "anual" && anioIdx < anios.length - 1) setAnioIdx(anioIdx + 1);
   };
-  const canPrev = modo === "mes" ? mesIdx > 0 : semIdx < semanas.length - 1;
-  const canNext = modo === "mes" ? mesIdx < meses.length - 1 : semIdx > 0;
+  const canPrev = modo === "mes" ? mesIdx > 0 : modo === "semana" ? semIdx < semanas.length - 1 : anioIdx > 0;
+  const canNext = modo === "mes" ? mesIdx < meses.length - 1 : modo === "semana" ? semIdx > 0 : anioIdx < anios.length - 1;
 
   return (
     <section>
       {/* Mode toggle */}
       <div className="flex gap-2 mb-4">
-        {(["mes", "semana"] as Modo[]).map((m) => (
+        {(["mes", "semana", "anual"] as Modo[]).map((m) => (
           <button
             key={m}
             onClick={() => setModo(m)}
@@ -174,7 +206,7 @@ export default function EstadoResultados({
             }`}
             style={modo === m ? { backgroundColor: salonColor } : undefined}
           >
-            {m === "mes" ? "Mensual" : "Semanal"}
+            {m === "mes" ? "Mensual" : m === "semana" ? "Semanal" : "Anual"}
           </button>
         ))}
       </div>

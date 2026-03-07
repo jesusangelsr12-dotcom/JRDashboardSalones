@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from "react";
 import type { Cita, Gasto, MovimientoBolsa, Bolsa } from "@/lib/types";
-import { formatMoney, fechaCorta, mesesDisponibles } from "@/lib/calculations";
+import { formatMoney, fechaCorta, mesesDisponibles, costoNeto } from "@/lib/calculations";
+import type { MetodoPago } from "@/lib/types";
 
 interface TablaSectionProps {
   citas: Cita[];
@@ -10,6 +11,7 @@ interface TablaSectionProps {
   movimientos: MovimientoBolsa[];
   bolsas: Bolsa[];
   salonColor: string;
+  comisionTarjeta: number;
 }
 
 type FilterType = "todo" | "citas" | "gastos";
@@ -31,6 +33,7 @@ export default function TablaSection({
   movimientos,
   bolsas,
   salonColor,
+  comisionTarjeta,
 }: TablaSectionProps) {
   const [filter, setFilter] = useState<FilterType>("todo");
   const [search, setSearch] = useState("");
@@ -225,6 +228,11 @@ export default function TablaSection({
                   {row.monto >= 0 ? "+" : ""}
                   {formatMoney(Math.abs(row.monto))}
                 </p>
+                {row.metodo === "Tarjeta" && row.monto > 0 && comisionTarjeta > 0 && (
+                  <p className="text-[10px] font-mono text-teal-600">
+                    Neto: {formatMoney(costoNeto(row.monto, "Tarjeta" as MetodoPago, comisionTarjeta))}
+                  </p>
+                )}
                 <p className="text-[10px] text-text-secondary font-mono">
                   {row.metodo}
                 </p>
