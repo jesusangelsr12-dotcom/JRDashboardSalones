@@ -361,7 +361,31 @@ Siempre usar fallback para evitar rows invisibles:
 
 ---
 
-## 9. Decisiones de Diseño
+## 9. Auto-Close Semanal (Edge Function)
+
+**Propósito:** Cierre automático de semana para todos los salones cada domingo a medianoche (hora CDMX).
+
+**Archivos:**
+- `supabase/functions/auto-close-weeks/index.ts` — Supabase Edge Function (Deno)
+- `supabase/cron_auto_close.sql` — Configuración pg_cron para ejecutar cada domingo 06:00 UTC
+
+**Lógica:**
+1. Calcula el lunes de la semana actual (zona horaria CDMX, UTC-6)
+2. Consulta todos los salones
+3. Hace UPSERT de un cierre con `ingresos=0, gastos=0, libre=0, bolsas=[]` para cada salón
+4. `ON CONFLICT (salon_id, semana_inicio) DO NOTHING` — si ya se cerró manualmente, lo ignora
+
+**Notas:**
+- El cierre manual vía CierreModal sigue activo (esto es aditivo, no reemplazo)
+- Un auto-close con valores en 0 es solo un marcador de tiempo — los datos financieros reales los pone el cierre manual
+- Requiere extensiones `pg_cron` y `pg_net` habilitadas en Supabase Dashboard
+- Requiere deploy: `supabase functions deploy auto-close-weeks`
+
+**Cron:** `0 6 * * 0` = domingo 06:00 UTC = domingo 00:00 CDMX
+
+---
+
+## 10. Decisiones de Diseño
 
 - **Sin caché en store**: Decisión consciente. La simplicidad > performance. El dashboard no tiene tráfico alto.
 - **Upsert en bolsas**: Evita el problema de FK CASCADE. Más código pero seguro.
@@ -372,4 +396,4 @@ Siempre usar fallback para evitar rows invisibles:
 
 ---
 
-_Última actualización: 2026-05-02_
+_Última actualización: 2026-05-02 — auto-close semanal agregado_
