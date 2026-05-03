@@ -148,9 +148,11 @@ UNIQUE constraint: `cierres_salon_semana_unique (salon_id, semana_inicio)`
 - **Cierre automático en frontend**: al abrir la app, BolsasSection detecta semanas pasadas sin cerrar (con ingresos > 0) y las cierra automáticamente con datos financieros reales
 - **Edge Function de respaldo**: `auto-close-weeks` corre cada domingo a medianoche CDMX, crea marcadores $0 para semanas sin cierre (safety net si nadie abre la app)
 - La semana actual nunca se auto-cierra (sigue abierta hasta que pase)
-- Historial de semanas visible en acordeón
+- Historial de distribución semanal: cards colapsables con detalle por bolsa (máx 8, "Ver más")
+- Animación expand/collapse con Framer Motion
 - Protección contra doble cierre de la misma semana (UNIQUE constraint + addCierre check)
 - El botón manual de cierre fue removido — todo es automático
+- **Copiar para WhatsApp**: botón que copia distribución actual al clipboard con formato de emojis
 
 ### Bolsas
 - Múltiples bolsas por salón (efectivo, banco, otro)
@@ -399,4 +401,4 @@ Siempre usar fallback para evitar rows invisibles:
 
 ---
 
-_Última actualización: 2026-05-03 — auto-close frontend + Edge Function_
+_Última actualización: 2026-05-03 — historial distribución + copiar WhatsApp_
