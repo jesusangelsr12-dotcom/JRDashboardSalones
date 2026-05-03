@@ -213,6 +213,7 @@ export default function SalonDashboard() {
               bolsas={salon.bolsas}
               salonColor={salon.color}
               comisionTarjeta={salon.comisionTarjeta ?? 0}
+              onRefresh={loadData}
             />
           )}
 

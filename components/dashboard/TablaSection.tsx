@@ -4,6 +4,8 @@ import { useState, useMemo } from "react";
 import type { Cita, Gasto, MovimientoBolsa, Bolsa } from "@/lib/types";
 import { formatMoney, fechaCorta, mesesDisponibles, costoNeto } from "@/lib/calculations";
 import type { MetodoPago } from "@/lib/types";
+import { reasignarBolsa } from "@/lib/store";
+import Modal from "@/components/ui/Modal";
 
 interface TablaSectionProps {
   citas: Cita[];
@@ -12,6 +14,7 @@ interface TablaSectionProps {
   bolsas: Bolsa[];
   salonColor: string;
   comisionTarjeta: number;
+  onRefresh?: () => void;
 }
 
 type FilterType = "todo" | "citas" | "gastos";
@@ -25,6 +28,9 @@ interface TransaccionRow {
   metodo: string;
   detalle?: string;
   source?: string;
+  origen?: "manual" | "auto";
+  movimientoId?: string;
+  bolsaId?: string;
 }
 
 export default function TablaSection({
@@ -34,10 +40,14 @@ export default function TablaSection({
   bolsas,
   salonColor,
   comisionTarjeta,
+  onRefresh,
 }: TablaSectionProps) {
   const [filter, setFilter] = useState<FilterType>("todo");
   const [search, setSearch] = useState("");
   const [mesFilter, setMesFilter] = useState("todos");
+  const [reasignando, setReasignando] = useState<TransaccionRow | null>(null);
+  const [nuevaBolsaId, setNuevaBolsaId] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const meses = useMemo(() => mesesDisponibles(citas, gastos), [citas, gastos]);
 
@@ -60,6 +70,7 @@ export default function TablaSection({
       monto: -g.monto,
       metodo: g.metodoPago,
       source: g.source,
+      origen: g.source === "sheets" ? "auto" as const : undefined,
     }));
 
     // Movimientos de bolsa
@@ -75,6 +86,9 @@ export default function TablaSection({
       metodo: m.metodoPago,
       source: "bolsa",
       detalle: bolsaNames[m.bolsaId] ? `Bolsa: ${bolsaNames[m.bolsaId]}` : undefined,
+      origen: m.tipo === "egreso" ? m.origen : undefined,
+      movimientoId: m.id,
+      bolsaId: m.bolsaId,
     }));
 
     let all = [...citaRows, ...gastoRows, ...movRows].sort(
@@ -103,6 +117,18 @@ export default function TablaSection({
 
     return all;
   }, [citas, gastos, movimientos, bolsas, filter, search, mesFilter]);
+
+  const handleReasignar = async () => {
+    if (!reasignando?.movimientoId || !nuevaBolsaId) return;
+    setSaving(true);
+    const ok = await reasignarBolsa(reasignando.movimientoId, nuevaBolsaId);
+    setSaving(false);
+    if (ok) {
+      setReasignando(null);
+      setNuevaBolsaId("");
+      onRefresh?.();
+    }
+  };
 
   const filters: { id: FilterType; label: string }[] = [
     { id: "todo", label: "Todo" },
@@ -197,7 +223,7 @@ export default function TablaSection({
 
               {/* Info */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <p className="text-[13px] font-display font-medium text-text-primary truncate">
                     {row.descripcion}
                   </p>
@@ -211,11 +237,39 @@ export default function TablaSection({
                       Bolsa
                     </span>
                   )}
+                  {/* Auto/Manual badge — solo para gastos */}
+                  {row.tipo === "gasto" && row.origen === "auto" && (
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 flex-shrink-0">
+                      Auto
+                    </span>
+                  )}
+                  {row.tipo === "gasto" && row.origen === "manual" && (
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 flex-shrink-0">
+                      Manual
+                    </span>
+                  )}
                 </div>
-                <p className="text-[11px] text-text-secondary font-mono truncate">
-                  {fechaCorta(row.fecha)}
-                  {row.detalle && ` · ${row.detalle}`}
-                </p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-[11px] text-text-secondary font-mono truncate">
+                    {fechaCorta(row.fecha)}
+                    {row.detalle && ` · ${row.detalle}`}
+                  </p>
+                  {/* Reasignar button — solo para gastos manuales de bolsa */}
+                  {row.tipo === "gasto" && row.origen === "manual" && row.movimientoId && (
+                    <button
+                      onClick={() => {
+                        setReasignando(row);
+                        setNuevaBolsaId(row.bolsaId || "");
+                      }}
+                      className="text-[10px] font-display font-medium px-1.5 py-0.5 rounded transition-all active:scale-95 flex-shrink-0"
+                      style={{ color: salonColor, backgroundColor: salonColor + "14" }}
+                    >
+                      ✏️ Reasignar
+                    </button>
+                  )}
+                  {/* Los gastos de Sheets no son reasignables en esta versión.
+                      Ver DEUDA-TECNICA.md → "Migración Sheets → Supabase" */}
+                </div>
               </div>
 
               {/* Amount + method */}
@@ -247,6 +301,49 @@ export default function TablaSection({
           )}
         </div>
       )}
+
+      {/* Reasignar bolsa modal */}
+      <Modal open={!!reasignando} onClose={() => { setReasignando(null); setNuevaBolsaId(""); }}>
+        <h3 className="text-lg font-bold font-display text-text-primary mb-2">
+          Reasignar bolsa
+        </h3>
+        <p className="text-[13px] text-text-secondary mb-4">
+          {reasignando?.descripcion}
+        </p>
+
+        <label className="text-[11px] uppercase tracking-[0.08em] text-text-secondary font-display font-medium mb-1.5 block">
+          Nueva bolsa
+        </label>
+        <select
+          value={nuevaBolsaId}
+          onChange={(e) => setNuevaBolsaId(e.target.value)}
+          className="w-full bg-bg border border-border rounded-card px-3 py-2.5 text-[13px] font-display text-text-primary outline-none mb-5"
+        >
+          <option value="">Seleccionar bolsa</option>
+          {bolsas.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.nombre}
+            </option>
+          ))}
+        </select>
+
+        <div className="flex gap-3">
+          <button
+            onClick={() => { setReasignando(null); setNuevaBolsaId(""); }}
+            className="flex-1 py-3 rounded-card border border-border text-[14px] font-display font-medium text-text-secondary active:scale-[0.98] transition-transform"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleReasignar}
+            disabled={saving || !nuevaBolsaId || nuevaBolsaId === reasignando?.bolsaId}
+            className="flex-1 py-3 rounded-card text-[14px] font-display font-semibold text-white active:scale-[0.98] transition-transform disabled:opacity-50"
+            style={{ backgroundColor: salonColor }}
+          >
+            {saving ? "Guardando..." : "Confirmar"}
+          </button>
+        </div>
+      </Modal>
     </section>
   );
 }
