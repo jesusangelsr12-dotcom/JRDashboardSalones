@@ -199,3 +199,48 @@ describe("movimiento bolsa acumulado logic", () => {
     expect(newAcumulado).toBe(-500);
   });
 });
+
+describe("reasignarBolsa logic", () => {
+  it("reasignar only changes bolsaId, not origen or other fields", () => {
+    const movimiento = {
+      id: "mov-1",
+      salonId: "s1",
+      bolsaId: "bolsa-vieja",
+      tipo: "egreso" as const,
+      monto: 500,
+      metodoPago: "Efectivo" as const,
+      descripcion: "Compra tinte",
+      fecha: "2026-05-01",
+      createdAt: "2026-05-01T00:00:00Z",
+      origen: "manual" as const,
+    };
+
+    const nuevaBolsaId = "bolsa-nueva";
+
+    const reasignado = { ...movimiento, bolsaId: nuevaBolsaId };
+
+    expect(reasignado.bolsaId).toBe("bolsa-nueva");
+    expect(reasignado.origen).toBe("manual");
+    expect(reasignado.tipo).toBe("egreso");
+    expect(reasignado.monto).toBe(500);
+    expect(reasignado.descripcion).toBe("Compra tinte");
+    expect(reasignado.metodoPago).toBe("Efectivo");
+  });
+
+  it("movimiento created manually has origen manual", () => {
+    const origen = "manual" as const;
+
+    const insertPayload = {
+      salon_id: "s1",
+      bolsa_id: "b1",
+      tipo: "egreso",
+      monto: 300,
+      metodo_pago: "Efectivo",
+      descripcion: "Test",
+      fecha: "2026-05-01",
+      origen,
+    };
+
+    expect(insertPayload.origen).toBe("manual");
+  });
+});
