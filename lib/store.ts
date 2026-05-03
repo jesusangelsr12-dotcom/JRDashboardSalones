@@ -453,7 +453,7 @@ export async function addMovimientoBolsa(
     fecha: string;
   }
 ): Promise<void> {
-  // 1. Insertar el movimiento
+  // 1. Insertar el movimiento (origen siempre 'manual' desde el formulario)
   const { error } = await supabase.from("movimientos_bolsa").insert({
     salon_id: salonId,
     bolsa_id: movimiento.bolsaId,
@@ -462,6 +462,7 @@ export async function addMovimientoBolsa(
     metodo_pago: movimiento.metodoPago,
     descripcion: movimiento.descripcion,
     fecha: movimiento.fecha,
+    origen: "manual",
   });
   if (error) {
     console.error("Error adding movimiento bolsa:", error);
@@ -484,6 +485,19 @@ export async function deleteMovimientoBolsa(id: string, bolsaId: string, tipo: T
   // 2. Después revertir el acumulado atómicamente
   const delta = tipo === "ingreso" ? -monto : monto;
   await incrementAcumulado(bolsaId, delta);
+}
+
+export async function reasignarBolsa(movimientoId: string, nuevaBolsaId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from("movimientos_bolsa")
+    .update({ bolsa_id: nuevaBolsaId })
+    .eq("id", movimientoId);
+
+  if (error) {
+    console.error("Error reasignando bolsa:", error);
+    return false;
+  }
+  return true;
 }
 
 // ── Seed data: Bolsas plantilla ──
