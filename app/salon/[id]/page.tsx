@@ -15,7 +15,6 @@ import BolsasSection from "@/components/dashboard/BolsasSection";
 import GraficasSection from "@/components/dashboard/GraficasSection";
 import TablaSection from "@/components/dashboard/TablaSection";
 import EstadoResultados from "@/components/dashboard/EstadoResultados";
-import GastoAdminModal from "@/components/dashboard/GastoAdminModal";
 import MovimientoBolsaModal from "@/components/dashboard/MovimientoBolsaModal";
 import FadeIn from "@/components/motion/FadeIn";
 
@@ -28,7 +27,6 @@ export default function SalonDashboard() {
   const [activeTab, setActiveTab] = useState<TabId>("resumen");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showGastoModal, setShowGastoModal] = useState(false);
   const [showMovimientoModal, setShowMovimientoModal] = useState(false);
   const [movimientos, setMovimientos] = useState<MovimientoBolsa[]>([]);
 
@@ -245,28 +243,7 @@ export default function SalonDashboard() {
           </svg>
         </button>
 
-        {/* Add expense button */}
-        <button
-          onClick={() => setShowGastoModal(true)}
-          className="w-12 h-12 rounded-full text-white flex items-center justify-center shadow-lg active:scale-90 transition-transform"
-          style={{ backgroundColor: salon.color }}
-          title="Registrar gasto"
-        >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M10 4V16M4 10H16" stroke="white" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </button>
       </div>
-
-      {/* Admin expense modal */}
-      <GastoAdminModal
-        open={showGastoModal}
-        onClose={() => setShowGastoModal(false)}
-        salonId={salon.id}
-        salonColor={salon.color}
-        bolsas={salon.bolsas}
-        onSaved={loadData}
-      />
 
       {/* Movimiento de bolsa modal */}
       <MovimientoBolsaModal
