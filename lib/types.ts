@@ -93,6 +93,8 @@ export interface GastoAdmin {
 
 export type TipoMovimiento = "ingreso" | "egreso";
 
+export type OrigenMovimiento = "manual" | "auto";
+
 export interface MovimientoBolsa {
   id: string;
   salonId: string;
@@ -103,6 +105,7 @@ export interface MovimientoBolsa {
   descripcion: string;
   fecha: string; // ISO date
   createdAt: string;
+  origen: OrigenMovimiento;
 }
 
 // ── Cierre de semana ──

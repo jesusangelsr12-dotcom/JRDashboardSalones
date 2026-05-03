@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "./supabase";
-import type { Salon, Bolsa, GastoFijo, CierreSemana, GastoAdmin, MetodoPago, MovimientoBolsa, TipoMovimiento } from "./types";
+import type { Salon, Bolsa, GastoFijo, CierreSemana, GastoAdmin, MetodoPago, MovimientoBolsa, TipoMovimiento, OrigenMovimiento } from "./types";
 
 // ── Helpers: mapear filas de Supabase → tipos de la app ──
 
@@ -437,6 +437,7 @@ export async function getMovimientosBolsa(salonId: string): Promise<MovimientoBo
       descripcion: m.descripcion,
       fecha: m.fecha,
       createdAt: m.created_at,
+      origen: (m.origen ?? "manual") as OrigenMovimiento,
     })) ?? []
   );
 }
