@@ -5,6 +5,36 @@
 Next.js 14 + Supabase dashboard for multi-salon financial management.
 Full knowledge base: `JR_CONSULTORIA_APP.md` (update with every significant change).
 
+## Commands
+
+- Build: `npm run build`
+- Test: `npm run test`
+- Dev: `npm run dev` (port 3000)
+- Lint: `npm run lint`
+
+## Style
+
+- All components use `"use client"`
+- Tailwind + inline styles for `salonColor`
+- Mobile-first (iPhone PWA)
+- Font sizes: `text-[11px]` to `text-[14px]`
+- `formatMoney()` for all currency display
+- Framer Motion for animations
+- Warm palette: bg `#F8F3ED`, accent `#7B4F2E`, gold `#C8963C`
+
+## Git
+
+- Production: `main` (Vercel auto-deploy)
+- Development: `claude/fix-vercel-production-branch-pj9gq`
+
+## Environment
+
+Required env vars (see `.env.example` for names):
+- Supabase URL and anon key
+- Google Sheets API key
+
+Never commit `.env.local` or actual secrets to the repo.
+
 ## Critical Rules
 
 - FK disambiguation: always use `bolsas!bolsas_salon_id_fkey(*)` in Supabase selects
