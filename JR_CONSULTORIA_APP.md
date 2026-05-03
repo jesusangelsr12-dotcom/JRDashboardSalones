@@ -144,10 +144,13 @@ UNIQUE constraint: `cierres_salon_semana_unique (salon_id, semana_inicio)`
 - Configuración por salón: nombre, bolsas (tipos, nombres), bolsa default para gastos, comisión tarjeta (%)
 - Seed inicial con salones de ejemplo (protegido contra duplicados)
 
-### Cierres Semanales
-- Registrar cierre: ingresos, gastos, desglose efectivo/tarjeta
-- Historial de cierres en tab Tabla
-- Protección contra doble cierre de la misma semana
+### Cierres Semanales (Auto-Close)
+- **Cierre automático en frontend**: al abrir la app, BolsasSection detecta semanas pasadas sin cerrar (con ingresos > 0) y las cierra automáticamente con datos financieros reales
+- **Edge Function de respaldo**: `auto-close-weeks` corre cada domingo a medianoche CDMX, crea marcadores $0 para semanas sin cierre (safety net si nadie abre la app)
+- La semana actual nunca se auto-cierra (sigue abierta hasta que pase)
+- Historial de semanas visible en acordeón
+- Protección contra doble cierre de la misma semana (UNIQUE constraint + addCierre check)
+- El botón manual de cierre fue removido — todo es automático
 
 ### Bolsas
 - Múltiples bolsas por salón (efectivo, banco, otro)
@@ -396,4 +399,4 @@ Siempre usar fallback para evitar rows invisibles:
 
 ---
 
-_Última actualización: 2026-05-02 — auto-close semanal agregado_
+_Última actualización: 2026-05-03 — auto-close frontend + Edge Function_

@@ -5,14 +5,12 @@ import type { ResumenSemanal, CierreSemana, Salon, Cita, Gasto, SemanaDetectada,
 import {
   formatMoney,
   getLunesDeSemana,
-  getDomingoDeSemana,
   detectarSemanas,
   calcularResumenParaSemana,
 } from "@/lib/calculations";
 import { addCierre, getAcumulados, saveAcumulados, getCierres } from "@/lib/store";
 import BolsaCard from "./BolsaCard";
 import ResumenMetodoPago from "./ResumenMetodoPago";
-import Modal from "@/components/ui/Modal";
 
 interface BolsasSectionProps {
   resumen: ResumenSemanal;
@@ -35,31 +33,46 @@ export default function BolsasSection({
   onCierreCompleto,
   onMovimiento,
 }: BolsasSectionProps) {
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [closing, setClosing] = useState(false);
-  const [yaCerrada, setYaCerrada] = useState(false);
   const [semanas, setSemanas] = useState<SemanaDetectada[]>([]);
   const [showHistorial, setShowHistorial] = useState(false);
   const [closingSemana, setClosingSemana] = useState<string | null>(null);
+  const [autoClosing, setAutoClosing] = useState(false);
 
   useEffect(() => {
-    async function loadData() {
+    async function loadAndAutoClose() {
       const cierres = await getCierres(salon.id);
       const hoy = new Date();
       const lunesActual = getLunesDeSemana(hoy).toISOString().split("T")[0];
-      setYaCerrada(cierres.some((c) => c.semanaInicio === lunesActual));
 
       const detected = detectarSemanas(
         citas, gastos, salon.gastosFijos, cierres, salon.bolsaDefaultGastosId, salon.comisionTarjeta ?? 0
       );
-      setSemanas(detected.reverse()); // Más recientes primero
+
+      const pendientes = detected.filter(
+        (s) => !s.cerrada && s.semanaInicio !== lunesActual && s.ingresos > 0
+      );
+
+      if (pendientes.length > 0) {
+        setAutoClosing(true);
+        for (const semana of pendientes) {
+          await cerrarSemanaEspecificaSilent(semana);
+        }
+        setAutoClosing(false);
+
+        const cierresActualizados = await getCierres(salon.id);
+        const detectedActualizados = detectarSemanas(
+          citas, gastos, salon.gastosFijos, cierresActualizados, salon.bolsaDefaultGastosId, salon.comisionTarjeta ?? 0
+        );
+        setSemanas(detectedActualizados.reverse());
+        onCierreCompleto();
+      } else {
+        setSemanas(detected.reverse());
+      }
     }
-    loadData();
+    loadAndAutoClose();
   }, [salon, citas, gastos]);
 
-  const cerrarSemanaEspecifica = async (semana: SemanaDetectada) => {
-    setClosingSemana(semana.semanaInicio);
-
+  const cerrarSemanaEspecificaSilent = async (semana: SemanaDetectada) => {
     const datos = calcularResumenParaSemana(
       citas, gastos, salon.gastosFijos,
       semana.semanaInicio, semana.semanaFin,
@@ -83,14 +96,8 @@ export default function BolsasSection({
     };
 
     const added = await addCierre(salon.id, cierre);
-    if (!added) {
-      // Cierre ya existía o error — no duplicar acumulados
-      setClosingSemana(null);
-      onCierreCompleto();
-      return;
-    }
+    if (!added) return;
 
-    // Update acumulados: sum bolsa allocation and subtract assigned gastos
     const acumulados = await getAcumulados(salon.id);
     salon.bolsas.forEach((b) => {
       const montoSemana = libre > 0 ? libre * (b.porcentaje / 100) : 0;
@@ -98,54 +105,9 @@ export default function BolsasSection({
       acumulados[b.id] = (acumulados[b.id] || 0) + montoSemana - gastosAsignados;
     });
     await saveAcumulados(salon.id, acumulados);
-
-    setClosingSemana(null);
-
-    // Check if it was the current week
-    const hoy = new Date();
-    const lunesActual = getLunesDeSemana(hoy).toISOString().split("T")[0];
-    if (semana.semanaInicio === lunesActual) {
-      setYaCerrada(true);
-    }
-
-    // Refresh semanas
-    const cierres = await getCierres(salon.id);
-    const detected = detectarSemanas(
-      citas, gastos, salon.gastosFijos, cierres, salon.bolsaDefaultGastosId, salon.comisionTarjeta ?? 0
-    );
-    setSemanas(detected.reverse());
-    onCierreCompleto();
   };
 
-  const handleCerrarSemanaActual = async () => {
-    setClosing(true);
-
-    const hoy = new Date();
-    const lunes = getLunesDeSemana(hoy);
-    const domingo = getDomingoDeSemana(hoy);
-    const lunesISO = lunes.toISOString().split("T")[0];
-    const domingoISO = domingo.toISOString().split("T")[0];
-
-    const currentSemana: SemanaDetectada = {
-      semanaInicio: lunesISO,
-      semanaFin: domingoISO,
-      label: "",
-      ingresos: resumen.ingresos,
-      gastosVariables: resumen.gastosVariables,
-      gastosFijos: resumen.gastosFijos,
-      libre: resumen.libre,
-      cerrada: false,
-    };
-
-    await cerrarSemanaEspecifica(currentSemana);
-    setClosing(false);
-    setShowConfirm(false);
-    setYaCerrada(true);
-  };
-
-  // Total que se repartirá esta semana
   const totalBolsas = resumen.bolsas.reduce((s, b) => s + b.montoSemana, 0);
-  const pendientes = semanas.filter((s) => !s.cerrada);
 
   return (
     <section>
@@ -206,37 +168,11 @@ export default function BolsasSection({
         />
       </div>
 
-      {/* Cerrar semana button */}
-      <button
-        onClick={() => setShowConfirm(true)}
-        disabled={yaCerrada || resumen.libre <= 0}
-        className={`w-full py-3.5 rounded-card text-[14px] font-display font-semibold transition-all active:scale-[0.98] ${
-          yaCerrada
-            ? "bg-bg text-text-secondary border border-border cursor-not-allowed"
-            : resumen.libre <= 0
-            ? "bg-bg text-text-secondary border border-border cursor-not-allowed"
-            : "text-white shadow-lg"
-        }`}
-        style={
-          !yaCerrada && resumen.libre > 0
-            ? { backgroundColor: salonColor }
-            : undefined
-        }
-      >
-        {yaCerrada ? "Semana ya cerrada" : "Cerrar semana"}
-      </button>
-
-      {yaCerrada && (
-        <p className="text-center text-[11px] text-text-secondary mt-2 font-mono">
-          Los acumulados ya incluyen esta semana
-        </p>
-      )}
-
-      {/* Pending weeks alert */}
-      {pendientes.length > 1 && (
-        <div className="mt-4 bg-amber-50 border border-amber-200 rounded-card px-4 py-3">
+      {/* Auto-close status */}
+      {autoClosing && (
+        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-card px-4 py-3">
           <p className="text-[12px] text-amber-700 font-display font-medium">
-            {pendientes.length - 1} semana{pendientes.length - 1 > 1 ? "s" : ""} pendiente{pendientes.length - 1 > 1 ? "s" : ""} de cerrar
+            Cerrando semanas pendientes...
           </p>
         </div>
       )}
@@ -295,17 +231,6 @@ export default function BolsasSection({
                     <span>Libre: {formatMoney(sem.libre)}</span>
                   </div>
 
-                  {/* Close retroactively button */}
-                  {!sem.cerrada && !esSemanaActual && sem.ingresos > 0 && (
-                    <button
-                      onClick={() => cerrarSemanaEspecifica(sem)}
-                      disabled={closingSemana === sem.semanaInicio}
-                      className="mt-2 text-[11px] font-display font-medium px-3 py-1 rounded-full active:scale-95 transition-transform"
-                      style={{ backgroundColor: salonColor + "14", color: salonColor }}
-                    >
-                      {closingSemana === sem.semanaInicio ? "Cerrando..." : "Cerrar"}
-                    </button>
-                  )}
                 </div>
               );
             })}
@@ -313,64 +238,6 @@ export default function BolsasSection({
         )}
       </div>
 
-      {/* Confirmation modal */}
-      <Modal open={showConfirm} onClose={() => setShowConfirm(false)}>
-        <h3 className="text-lg font-bold font-display text-text-primary mb-2">
-          Cerrar semana
-        </h3>
-        <p className="text-[13px] text-text-secondary mb-5">
-          Se repartirá <strong className="text-text-primary">{formatMoney(totalBolsas)}</strong> entre
-          las bolsas. Los montos se sumarán a los acumulados. Esta acción no se
-          puede deshacer.
-        </p>
-
-        {/* Preview */}
-        <div className="space-y-2 mb-6">
-          {resumen.bolsas.map((b) => (
-            <div
-              key={b.bolsaId}
-              className="flex items-center justify-between px-3 py-2 bg-bg rounded-[8px]"
-            >
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: b.color }}
-                />
-                <span className="text-[13px] font-display text-text-primary">
-                  {b.nombre}
-                </span>
-              </div>
-              <div className="text-right">
-                <span className="text-[13px] font-numbers font-medium" style={{ color: b.color }}>
-                  +{formatMoney(b.montoSemana)}
-                </span>
-                {b.gastosAsignados > 0 && (
-                  <span className="text-[11px] font-mono text-red-500 ml-2">
-                    -{formatMoney(b.gastosAsignados)}
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex gap-3">
-          <button
-            onClick={() => setShowConfirm(false)}
-            className="flex-1 py-3 rounded-card border border-border text-[14px] font-display font-medium text-text-secondary active:scale-[0.98] transition-transform"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleCerrarSemanaActual}
-            disabled={closing}
-            className="flex-1 py-3 rounded-card text-[14px] font-display font-semibold text-white active:scale-[0.98] transition-transform"
-            style={{ backgroundColor: salonColor }}
-          >
-            {closing ? "Cerrando..." : "Confirmar"}
-          </button>
-        </div>
-      </Modal>
     </section>
   );
 }
