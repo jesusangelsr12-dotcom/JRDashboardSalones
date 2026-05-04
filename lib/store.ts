@@ -452,6 +452,7 @@ export async function addMovimientoBolsa(
     metodoPago: MetodoPago;
     descripcion: string;
     fecha: string;
+    esCostoServicio?: boolean;
   }
 ): Promise<void> {
   // 1. Insertar el movimiento (origen siempre 'manual' desde el formulario)
@@ -464,6 +465,7 @@ export async function addMovimientoBolsa(
     descripcion: movimiento.descripcion,
     fecha: movimiento.fecha,
     origen: "manual",
+    es_costo_servicio: movimiento.tipo === "ingreso" ? false : (movimiento.esCostoServicio ?? false),
   });
   if (error) {
     console.error("Error adding movimiento bolsa:", error);
