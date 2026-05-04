@@ -491,6 +491,28 @@ export async function deleteMovimientoBolsa(id: string, bolsaId: string, tipo: T
 }
 
 export async function reasignarBolsa(movimientoId: string, nuevaBolsaId: string): Promise<boolean> {
+  const { data: mov, error: fetchErr } = await supabase
+    .from("movimientos_bolsa")
+    .select("bolsa_id, tipo, monto")
+    .eq("id", movimientoId)
+    .single();
+
+  if (fetchErr || !mov) {
+    console.error("Error fetching movimiento para reasignar:", fetchErr);
+    return false;
+  }
+
+  const oldBolsaId = mov.bolsa_id as string;
+  if (oldBolsaId === nuevaBolsaId) return true;
+
+  const monto = mov.monto as number;
+  const tipo = mov.tipo as string;
+  const delta = tipo === "ingreso" ? monto : -monto;
+
+  // Revert from old bolsa, apply to new bolsa
+  await incrementAcumulado(oldBolsaId, -delta);
+  await incrementAcumulado(nuevaBolsaId, delta);
+
   const { error } = await supabase
     .from("movimientos_bolsa")
     .update({ bolsa_id: nuevaBolsaId })
@@ -498,6 +520,8 @@ export async function reasignarBolsa(movimientoId: string, nuevaBolsaId: string)
 
   if (error) {
     console.error("Error reasignando bolsa:", error);
+    await incrementAcumulado(oldBolsaId, delta);
+    await incrementAcumulado(nuevaBolsaId, -delta);
     return false;
   }
   return true;
