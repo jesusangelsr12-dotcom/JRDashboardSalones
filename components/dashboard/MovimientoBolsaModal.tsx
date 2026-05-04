@@ -31,6 +31,7 @@ export default function MovimientoBolsaModal({
   const [descripcion, setDescripcion] = useState("");
   const [fecha, setFecha] = useState(new Date().toISOString().split("T")[0]);
   const [saving, setSaving] = useState(false);
+  const [esCostoServicio, setEsCostoServicio] = useState(false);
 
   // Resetear fecha cada vez que se abre el modal
   useEffect(() => {
@@ -48,6 +49,7 @@ export default function MovimientoBolsaModal({
       metodoPago,
       descripcion: descripcion.trim() || (tipo === "ingreso" ? "Ingreso manual" : "Retiro manual"),
       fecha,
+      esCostoServicio: tipo === "egreso" ? esCostoServicio : false,
     });
 
     // Reset
@@ -57,6 +59,7 @@ export default function MovimientoBolsaModal({
     setMetodoPago("Efectivo");
     setDescripcion("");
     setFecha(new Date().toISOString().split("T")[0]);
+    setEsCostoServicio(false);
     setSaving(false);
     onSaved();
     onClose();
@@ -78,7 +81,7 @@ export default function MovimientoBolsaModal({
           </label>
           <div className="flex gap-2">
             <button
-              onClick={() => setTipo("ingreso")}
+              onClick={() => { setTipo("ingreso"); setEsCostoServicio(false); }}
               className={`flex-1 py-2.5 rounded-[8px] text-[13px] font-display font-medium transition-all ${
                 tipo === "ingreso"
                   ? "text-white"
@@ -199,6 +202,34 @@ export default function MovimientoBolsaModal({
             className="w-full bg-bg border border-border rounded-[8px] px-3 py-2.5 text-[14px] font-mono text-text-primary outline-none focus:border-text-secondary transition-colors"
           />
         </div>
+
+        {/* Costo de servicio toggle — solo visible para egresos */}
+        {tipo === "egreso" && (
+          <div>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <div
+                onClick={() => setEsCostoServicio(!esCostoServicio)}
+                className={`relative w-10 h-5 rounded-full transition-colors ${
+                  esCostoServicio ? "bg-emerald-500" : "bg-border"
+                }`}
+              >
+                <div
+                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                    esCostoServicio ? "translate-x-5" : "translate-x-0.5"
+                  }`}
+                />
+              </div>
+              <div>
+                <span className="text-[13px] font-display text-text-primary">
+                  Producto consumido en servicio
+                </span>
+                <p className="text-[10px] font-display text-text-secondary">
+                  Tinte, químicos, productos que usaste en clientas
+                </p>
+              </div>
+            </label>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-3">
