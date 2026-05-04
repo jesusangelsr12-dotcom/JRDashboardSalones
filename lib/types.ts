@@ -106,6 +106,7 @@ export interface MovimientoBolsa {
   fecha: string; // ISO date
   createdAt: string;
   origen: OrigenMovimiento;
+  esCostoServicio: boolean;
 }
 
 // ── Cierre de semana ──

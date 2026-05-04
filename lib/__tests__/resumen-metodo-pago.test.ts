@@ -70,6 +70,7 @@ function makeMovimiento(
     fecha: "2026-02-23",
     createdAt: "2026-02-23",
     origen: "manual" as const,
+    esCostoServicio: false,
   };
 }
 

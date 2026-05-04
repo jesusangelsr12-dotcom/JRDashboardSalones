@@ -438,6 +438,7 @@ export async function getMovimientosBolsa(salonId: string): Promise<MovimientoBo
       fecha: m.fecha,
       createdAt: m.created_at,
       origen: (m.origen ?? "manual") as OrigenMovimiento,
+      esCostoServicio: m.es_costo_servicio ?? false,
     })) ?? []
   );
 }
