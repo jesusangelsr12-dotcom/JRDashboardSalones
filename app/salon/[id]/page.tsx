@@ -180,7 +180,7 @@ export default function SalonDashboard() {
       ) : (
         <FadeIn delay={0.2} key={activeTab}>
           {activeTab === "resumen" && resumen && (
-            <ResumenSemanal resumen={resumen} salonColor={salon.color} />
+            <ResumenSemanal resumen={resumen} salonColor={salon.color} movimientos={movimientos} />
           )}
 
           {activeTab === "bolsas" && resumen && (

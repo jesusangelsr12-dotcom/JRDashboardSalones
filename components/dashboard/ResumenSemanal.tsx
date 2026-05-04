@@ -1,18 +1,38 @@
 "use client";
 
-import type { ResumenSemanal as ResumenType } from "@/lib/types";
+import { useMemo } from "react";
+import type { ResumenSemanal as ResumenType, MovimientoBolsa } from "@/lib/types";
+import { formatMoney, calcularGastoProductosMes } from "@/lib/calculations";
 import KpiCard from "./KpiCard";
 import MetodoBreakdown from "./MetodoBreakdown";
 
 interface ResumenSemanalProps {
   resumen: ResumenType;
   salonColor: string;
+  movimientos?: MovimientoBolsa[];
 }
+
+const SEMAFORO_COLORS: Record<string, string> = {
+  verde: "#16a34a",
+  amarillo: "#C8963C",
+  rojo: "#dc2626",
+};
 
 export default function ResumenSemanal({
   resumen,
   salonColor,
+  movimientos = [],
 }: ResumenSemanalProps) {
+  const kpiProductos = useMemo(() => {
+    const hoy = new Date();
+    return calcularGastoProductosMes(
+      movimientos,
+      resumen.ingresos,
+      hoy.getMonth(),
+      hoy.getFullYear()
+    );
+  }, [movimientos, resumen.ingresos]);
+
   return (
     <section>
       {/* KPI grid: 2 columns */}
@@ -74,6 +94,40 @@ export default function ResumenSemanal({
             Ingresos − Gastos fijos
           </p>
         </div>
+
+        {/* KPI: Productos del mes */}
+        {(kpiProductos.totalProductos > 0 || movimientos.length > 0) && (
+          <div className="col-span-2 relative overflow-hidden rounded-card border border-border bg-surface p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[11px] uppercase tracking-[0.08em] text-text-secondary font-display font-medium">
+                Productos del mes
+              </p>
+              {kpiProductos.ratio > 20 && (
+                <span className="text-[12px]">⚠️</span>
+              )}
+            </div>
+            <div className="flex items-baseline gap-3">
+              <p className="font-numbers text-xl font-medium text-text-primary">
+                {formatMoney(kpiProductos.totalProductos)}
+              </p>
+              <p
+                className="font-numbers text-[14px] font-medium"
+                style={{ color: SEMAFORO_COLORS[kpiProductos.semaforo] }}
+              >
+                {kpiProductos.ratio.toFixed(1)}% de ingresos
+              </p>
+            </div>
+            <div className="mt-2 h-1.5 bg-bg rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${Math.min(kpiProductos.ratio, 100)}%`,
+                  backgroundColor: SEMAFORO_COLORS[kpiProductos.semaforo],
+                }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Método de pago breakdown */}
