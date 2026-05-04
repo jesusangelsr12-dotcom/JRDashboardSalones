@@ -8,6 +8,7 @@ import type {
   DatosGraficas,
   SemanaDetectada,
   MetodoPago,
+  MovimientoBolsa,
 } from "./types";
 
 /** Aplica comisión de terminal a pagos con tarjeta */
@@ -489,4 +490,41 @@ export function aniosDisponibles(
   });
   years.add(new Date().getFullYear());
   return Array.from(years).sort();
+}
+
+// ── KPI: Gasto en productos del mes ──
+
+export type SemaforoColor = "verde" | "amarillo" | "rojo";
+
+export interface GastoProductosMes {
+  totalProductos: number;
+  ratio: number;
+  semaforo: SemaforoColor;
+}
+
+export function calcularGastoProductosMes(
+  movimientos: MovimientoBolsa[],
+  ingresosMes: number,
+  mes: number,
+  anio: number
+): GastoProductosMes {
+  const totalProductos = movimientos
+    .filter((m) => {
+      const f = new Date(m.fecha + "T12:00:00");
+      return (
+        m.tipo === "egreso" &&
+        m.esCostoServicio === true &&
+        f.getMonth() === mes &&
+        f.getFullYear() === anio
+      );
+    })
+    .reduce((sum, m) => sum + m.monto, 0);
+
+  const ratio = ingresosMes > 0 ? (totalProductos / ingresosMes) * 100 : 0;
+
+  let semaforo: SemaforoColor = "verde";
+  if (ratio > 20) semaforo = "rojo";
+  else if (ratio >= 15) semaforo = "amarillo";
+
+  return { totalProductos, ratio, semaforo };
 }
