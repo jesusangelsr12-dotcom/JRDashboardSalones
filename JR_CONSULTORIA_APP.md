@@ -434,4 +434,18 @@ Gastos fijos prorrateados a mes con ×4 (consistente con EstadoResultados).
 
 ---
 
-_Última actualización: 2026-06-13 — módulo Salud del Salón (Fase 1+2) + gastos fijos en copia WhatsApp_
+## 12. Rediseño visual app-wide (estilo Coinbase · paleta JR)
+
+Tokens de diseño alineados a la paleta cálida de marca (antes eran gris frío). Cambiar
+los tokens propaga el look a toda la app (todas las pantallas consumen estos tokens):
+
+- `tailwind.config.ts` + `app/globals.css`: bg `#F8F3ED`, surface `#FFFFFF`, border `#ECE3D8`,
+  text-primary `#1A1410`, text-secondary `#6B5D50`, accent `#7B4F2E`, gold `#C8963C`.
+  `rounded-card` 14px → 18px. Skeleton en tonos cálidos.
+- Chrome reestilizado: `SalonCard` y `DashboardHeader` con avatar de iniciales en el color
+  del salón; `TabNav` como segmented control sobre track cálido.
+- Fuentes sin cambio: Syne (display) + DM Mono (números), igual que el tab Salud aprobado.
+
+---
+
+_Última actualización: 2026-06-13 — rediseño visual app-wide (tokens cálidos) + módulo Salud (Fase 1+2)_

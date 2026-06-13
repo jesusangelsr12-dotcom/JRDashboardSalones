@@ -10,6 +10,7 @@ interface DashboardHeaderProps {
 
 export default function DashboardHeader({ salon }: DashboardHeaderProps) {
   const semana = rangoSemanaActual();
+  const iniciales = salon.nombre.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("") || "?";
 
   return (
     <header className="relative pt-4 pb-6">
@@ -51,20 +52,22 @@ export default function DashboardHeader({ salon }: DashboardHeaderProps) {
       </div>
 
       {/* Salon identity */}
-      <div className="flex items-center gap-3 mb-1">
+      <div className="flex items-center gap-3">
         <div
-          className="w-3 h-3 rounded-full border-[2.5px] border-bg outline outline-2"
-          style={{ backgroundColor: salon.color, outlineColor: salon.color }}
-        />
-        <h1 className="text-xl font-bold font-display text-text-primary tracking-tight">
-          {salon.nombre}
-        </h1>
+          className="w-12 h-12 rounded-full flex items-center justify-center text-[16px] font-display font-bold text-white flex-shrink-0"
+          style={{ backgroundColor: salon.color }}
+        >
+          {iniciales}
+        </div>
+        <div>
+          <h1 className="text-xl font-bold font-display text-text-primary tracking-tight leading-tight">
+            {salon.nombre}
+          </h1>
+          <p className="text-[13px] text-text-secondary font-mono mt-0.5">
+            {semana.label}
+          </p>
+        </div>
       </div>
-
-      {/* Week range */}
-      <p className="text-[13px] text-text-secondary font-mono ml-6">
-        {semana.label}
-      </p>
     </header>
   );
 }

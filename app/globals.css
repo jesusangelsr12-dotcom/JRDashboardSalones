@@ -5,12 +5,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap');
 
 :root {
-  --color-bg: #F5F5F7;
+  --color-bg: #F8F3ED;
   --color-surface: #FFFFFF;
-  --color-border: #E2E2E8;
-  --color-text-primary: #0A0A0F;
-  --color-text-secondary: #7C7C8A;
-  --color-accent: #1C1C1E;
+  --color-border: #ECE3D8;
+  --color-text-primary: #1A1410;
+  --color-text-secondary: #6B5D50;
+  --color-accent: #7B4F2E;
+  --color-gold: #C8963C;
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-left: env(safe-area-inset-left, 0px);
@@ -65,10 +66,10 @@ body {
 }
 
 .skeleton {
-  background: linear-gradient(90deg, #E2E2E8 25%, #F0F0F2 50%, #E2E2E8 75%);
+  background: linear-gradient(90deg, #ECE3D8 25%, #F6EFE6 50%, #ECE3D8 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
-  border-radius: 8px;
+  border-radius: 10px;
 }
 
 /* Prevent overscroll bounce on iOS */

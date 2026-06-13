@@ -8,15 +8,16 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        bg: "#F5F5F7",
+        bg: "#F8F3ED",
         surface: "#FFFFFF",
-        border: "#E2E2E8",
-        "text-primary": "#0A0A0F",
-        "text-secondary": "#7C7C8A",
-        accent: "#1C1C1E",
+        border: "#ECE3D8",
+        "text-primary": "#1A1410",
+        "text-secondary": "#6B5D50",
+        accent: "#7B4F2E",
+        gold: "#C8963C",
       },
       borderRadius: {
-        card: "14px",
+        card: "18px",
       },
       fontFamily: {
         display: ["Syne", "sans-serif"],

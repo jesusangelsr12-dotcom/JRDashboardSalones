@@ -18,14 +18,14 @@ const TABS: { id: TabId; label: string }[] = [
 
 export default function TabNav({ active, onChange, salonColor }: TabNavProps) {
   return (
-    <nav className="flex gap-1 bg-bg rounded-[10px] p-1 mb-6">
+    <nav className="flex gap-1 bg-[#EFE6DA] rounded-[14px] p-1 mb-6">
       {TABS.map((tab) => {
         const isActive = tab.id === active;
         return (
           <button
             key={tab.id}
             onClick={() => onChange(tab.id)}
-            className={`flex-1 py-2 text-[11px] font-display font-medium rounded-[8px] transition-all duration-200 ${
+            className={`flex-1 py-2 text-[11px] font-display font-medium rounded-[11px] transition-all duration-200 ${
               isActive
                 ? "text-white shadow-sm"
                 : "text-text-secondary hover:text-text-primary"
