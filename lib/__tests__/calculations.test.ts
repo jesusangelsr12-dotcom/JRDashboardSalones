@@ -35,12 +35,12 @@ function makeGasto(overrides: Partial<Gasto> = {}): Gasto {
 }
 
 const bolsas: Bolsa[] = [
-  { id: "b1", nombre: "Materiales", porcentaje: 60, color: "#000", acumulado: 1000 },
-  { id: "b2", nombre: "Sueldo", porcentaje: 40, color: "#111", acumulado: 500 },
+  { id: "b1", nombre: "Materiales", porcentaje: 60, color: "#000", acumulado: 1000, naturaleza: "reparto" },
+  { id: "b2", nombre: "Sueldo", porcentaje: 40, color: "#111", acumulado: 500, naturaleza: "gasto_operativo" },
 ];
 
 const gastosFijos: GastoFijo[] = [
-  { id: "gf1", nombre: "Renta", monto: 8000, frecuencia: "mensual" },
+  { id: "gf1", nombre: "Renta", monto: 8000, frecuencia: "mensual", categoria: "renta" },
 ];
 
 // ── Date helpers ──

@@ -3,7 +3,21 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
-import type { Salon, Bolsa, GastoFijo } from "@/lib/types";
+import type { Salon, Bolsa, GastoFijo, NaturalezaBolsa, CategoriaGasto } from "@/lib/types";
+
+const NATURALEZAS: { value: NaturalezaBolsa; label: string; hint: string }[] = [
+  { value: "gasto_operativo", label: "Gasto operativo", hint: "Sueldo por trabajo real · cuenta como gasto" },
+  { value: "reserva", label: "Reserva / ahorro", hint: "Utilidad apartada · no es gasto" },
+  { value: "reparto", label: "Reparto / utilidad", hint: "Dividendo · no es gasto" },
+];
+
+const CATEGORIAS: { value: CategoriaGasto; label: string }[] = [
+  { value: "nomina", label: "Nómina" },
+  { value: "renta", label: "Renta" },
+  { value: "insumos", label: "Insumos" },
+  { value: "servicios", label: "Servicios" },
+  { value: "otros", label: "Otros" },
+];
 import { getSalon, updateSalon, deleteSalon } from "@/lib/store";
 import Modal from "@/components/ui/Modal";
 
@@ -87,6 +101,7 @@ export default function SalonConfigPage() {
         porcentaje: 0,
         color: COLORES[bolsas.length % COLORES.length],
         acumulado: 0,
+        naturaleza: "reparto",
       },
     ]);
   };
@@ -109,7 +124,7 @@ export default function SalonConfigPage() {
   const addGastoFijo = () => {
     setGastosFijos([
       ...gastosFijos,
-      { id: uuidv4(), nombre: "", monto: 0, frecuencia: "mensual" },
+      { id: uuidv4(), nombre: "", monto: 0, frecuencia: "mensual", categoria: "otros" },
     ]);
   };
 
@@ -320,6 +335,25 @@ export default function SalonConfigPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Naturaleza — cómo la trata la capa de Salud */}
+              <div className="mt-3">
+                <label className="text-[10px] text-text-secondary font-display block mb-1">
+                  Naturaleza (para Salud)
+                </label>
+                <select
+                  value={bolsa.naturaleza}
+                  onChange={(e) => updateBolsa(i, "naturaleza", e.target.value)}
+                  className="w-full bg-bg border border-border rounded-[6px] px-2 py-1.5 text-[12px] font-display text-text-primary outline-none"
+                >
+                  {NATURALEZAS.map((n) => (
+                    <option key={n.value} value={n.value}>{n.label}</option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-text-secondary/70 font-display mt-1">
+                  {NATURALEZAS.find((n) => n.value === bolsa.naturaleza)?.hint}
+                </p>
+              </div>
             </div>
           ))}
         </div>
@@ -401,6 +435,17 @@ export default function SalonConfigPage() {
                   >
                     <option value="mensual">Mensual</option>
                     <option value="semanal">Semanal</option>
+                  </select>
+                  <select
+                    value={gf.categoria}
+                    onChange={(e) =>
+                      updateGastoFijo(i, "categoria", e.target.value)
+                    }
+                    className="bg-bg border border-border rounded-[6px] px-2 py-1 text-[12px] font-display text-text-primary outline-none"
+                  >
+                    {CATEGORIAS.map((c) => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
                   </select>
                 </div>
               </div>

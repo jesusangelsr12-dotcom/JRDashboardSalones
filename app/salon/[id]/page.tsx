@@ -14,7 +14,7 @@ import ResumenSemanal from "@/components/dashboard/ResumenSemanal";
 import BolsasSection from "@/components/dashboard/BolsasSection";
 import GraficasSection from "@/components/dashboard/GraficasSection";
 import TablaSection from "@/components/dashboard/TablaSection";
-import EstadoResultados from "@/components/dashboard/EstadoResultados";
+import SaludSection from "@/components/dashboard/SaludSection";
 import MovimientoBolsaModal from "@/components/dashboard/MovimientoBolsaModal";
 import FadeIn from "@/components/motion/FadeIn";
 
@@ -217,14 +217,12 @@ export default function SalonDashboard() {
             />
           )}
 
-          {activeTab === "finanzas" && (
-            <EstadoResultados
+          {activeTab === "salud" && (
+            <SaludSection
+              salon={salon}
               citas={citas}
               gastos={gastos}
-              gastosFijos={salon.gastosFijos}
-              comisionTarjeta={salon.comisionTarjeta ?? 0}
               salonColor={salon.color}
-              salonNombre={salon.nombre}
             />
           )}
         </FadeIn>

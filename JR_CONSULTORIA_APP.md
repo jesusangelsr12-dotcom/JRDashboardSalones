@@ -401,4 +401,37 @@ Siempre usar fallback para evitar rows invisibles:
 
 ---
 
-_Última actualización: 2026-05-03 — historial distribución + copiar WhatsApp_
+## 11. Módulo "Salud del Salón" (tab Salud — reemplaza Finanzas)
+
+**Propósito:** medir si cada salón es sano con 10 KPIs + scorecard semanal + semáforo global.
+Diseño estilo Coinbase iOS sobre la paleta cálida de JR. Ver `docs/TRAZABILIDAD-SALUD-SALON.html`
+(origen de cada dato y fórmula) y `docs/mockup-salud-salon.html` (referencia visual).
+
+**Archivos:**
+- `lib/salud.ts` — toda la lógica (funciones puras): `calcularSalud()`, KPIs, semáforo, scorecard.
+- `components/dashboard/SaludSection.tsx` — UI del tab (hero, scorecard, KPIs, días valle, riesgo).
+- `lib/__tests__/salud.test.ts` — tests de las fórmulas (incluye el ejemplo numérico del doc).
+- `supabase/migration_salud_salon.sql` — migración (aplicada en prod).
+
+**Campos nuevos en BD:**
+- `bolsas.naturaleza` text — `gasto_operativo` | `reserva` | `reparto` (default `reparto`).
+- `gastos_fijos.categoria` y `gastos_admin.categoria` text — `nomina`/`renta`/`insumos`/`servicios`/`otros` (default `otros`).
+
+**Regla clave (tratamiento de bolsas de sueldos):**
+Las bolsas son reparto de caja, NO clasificación de gasto. La capa de Salud usa `naturaleza`:
+- `gasto_operativo` (sueldo dueñas) → SÍ cuenta como gasto/nómina en margen, costo de personal y PE.
+- `reserva` / `reparto` → NO son gasto (utilidad apartada/repartida).
+- `sueldoOperativo = max(0, ingresos − gastosFijos) × (Σ% bolsas gasto_operativo)`.
+- NO se mueve nada a "gastos fijos": el reparto de `libre` a bolsas queda intacto.
+
+**Fórmula del margen (KPI 1):**
+`utilidad = ingresos − gastosFijosMes − gastosVariablesMes − sueldoOperativo`. Gastos del Sheet = variables.
+Gastos fijos prorrateados a mes con ×4 (consistente con EstadoResultados).
+
+**"Contactada" (KPI 10):** persistida en localStorage por semana (`jr_contactadas_<salonId>`), v1 sin tabla.
+
+**Descartado:** Fase 3 (estilista_id, KPI 6b por estilista, jugada de precios).
+
+---
+
+_Última actualización: 2026-06-13 — módulo Salud del Salón (Fase 1+2) + gastos fijos en copia WhatsApp_

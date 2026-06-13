@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { Bolsa, MetodoPago } from "@/lib/types";
+import type { Bolsa, MetodoPago, CategoriaGasto } from "@/lib/types";
+
+const CATEGORIAS: { value: CategoriaGasto; label: string }[] = [
+  { value: "otros", label: "Otros" },
+  { value: "nomina", label: "Nómina" },
+  { value: "renta", label: "Renta" },
+  { value: "insumos", label: "Insumos" },
+  { value: "servicios", label: "Servicios" },
+];
 import { addGastoAdmin } from "@/lib/store";
 import Modal from "@/components/ui/Modal";
 
@@ -27,6 +35,7 @@ export default function GastoAdminModal({
   const [metodoPago, setMetodoPago] = useState<MetodoPago>("Efectivo");
   const [fecha, setFecha] = useState(new Date().toISOString().split("T")[0]);
   const [bolsaId, setBolsaId] = useState<string>("");
+  const [categoria, setCategoria] = useState<CategoriaGasto>("otros");
   const [saving, setSaving] = useState(false);
 
   // Resetear fecha cada vez que se abre el modal
@@ -44,6 +53,7 @@ export default function GastoAdminModal({
       metodoPago,
       fecha,
       bolsaId: bolsaId || null,
+      categoria,
     });
 
     // Reset form
@@ -52,6 +62,7 @@ export default function GastoAdminModal({
     setMetodoPago("Efectivo");
     setFecha(new Date().toISOString().split("T")[0]);
     setBolsaId("");
+    setCategoria("otros");
     setSaving(false);
     onSaved();
     onClose();
@@ -129,6 +140,22 @@ export default function GastoAdminModal({
             onChange={(e) => setFecha(e.target.value)}
             className="w-full bg-bg border border-border rounded-[8px] px-3 py-2.5 text-[14px] font-mono text-text-primary outline-none focus:border-text-secondary transition-colors"
           />
+        </div>
+
+        {/* Categoría (para KPIs de Salud) */}
+        <div>
+          <label className="text-[12px] font-display text-text-secondary mb-1 block">
+            Categoría
+          </label>
+          <select
+            value={categoria}
+            onChange={(e) => setCategoria(e.target.value as CategoriaGasto)}
+            className="w-full bg-bg border border-border rounded-[8px] px-3 py-2.5 text-[14px] font-display text-text-primary outline-none focus:border-text-secondary transition-colors"
+          >
+            {CATEGORIAS.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
         </div>
 
         {/* Bolsa destino */}

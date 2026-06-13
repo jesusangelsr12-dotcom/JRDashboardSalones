@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "./supabase";
-import type { Salon, Bolsa, GastoFijo, CierreSemana, GastoAdmin, MetodoPago, MovimientoBolsa, TipoMovimiento, OrigenMovimiento } from "./types";
+import type { Salon, Bolsa, GastoFijo, CierreSemana, GastoAdmin, MetodoPago, MovimientoBolsa, TipoMovimiento, OrigenMovimiento, NaturalezaBolsa, CategoriaGasto } from "./types";
 
 // ── Helpers: mapear filas de Supabase → tipos de la app ──
 
@@ -23,6 +23,7 @@ interface BolsaRow {
   porcentaje: number;
   color: string;
   acumulado: number;
+  naturaleza: string | null;
 }
 
 interface GastoFijoRow {
@@ -31,6 +32,7 @@ interface GastoFijoRow {
   nombre: string;
   monto: number;
   frecuencia: string;
+  categoria: string | null;
 }
 
 function mapSalon(row: SalonRow): Salon {
@@ -47,12 +49,14 @@ function mapSalon(row: SalonRow): Salon {
       porcentaje: b.porcentaje,
       color: b.color,
       acumulado: b.acumulado,
+      naturaleza: (b.naturaleza ?? "reparto") as NaturalezaBolsa,
     })),
     gastosFijos: (row.gastos_fijos || []).map((g) => ({
       id: g.id,
       nombre: g.nombre,
       monto: g.monto,
       frecuencia: g.frecuencia as "semanal" | "mensual",
+      categoria: (g.categoria ?? "otros") as CategoriaGasto,
     })),
     createdAt: row.created_at,
   };
@@ -112,6 +116,7 @@ export async function addSalon(salon: Salon): Promise<boolean> {
         porcentaje: b.porcentaje,
         color: b.color,
         acumulado: b.acumulado,
+        naturaleza: b.naturaleza,
       }))
     );
     if (bolsasError) {
@@ -129,6 +134,7 @@ export async function addSalon(salon: Salon): Promise<boolean> {
         nombre: g.nombre,
         monto: g.monto,
         frecuencia: g.frecuencia,
+        categoria: g.categoria,
       }))
     );
     if (gastosError) {
@@ -177,7 +183,7 @@ export async function updateSalon(updated: Salon): Promise<void> {
     if (existingBolsaIds.has(b.id)) {
       await supabase
         .from("bolsas")
-        .update({ nombre: b.nombre, porcentaje: b.porcentaje, color: b.color })
+        .update({ nombre: b.nombre, porcentaje: b.porcentaje, color: b.color, naturaleza: b.naturaleza })
         .eq("id", b.id);
     } else {
       await supabase.from("bolsas").insert({
@@ -187,6 +193,7 @@ export async function updateSalon(updated: Salon): Promise<void> {
         porcentaje: b.porcentaje,
         color: b.color,
         acumulado: b.acumulado,
+        naturaleza: b.naturaleza,
       });
     }
   }
@@ -213,6 +220,7 @@ export async function updateSalon(updated: Salon): Promise<void> {
         nombre: g.nombre,
         monto: g.monto,
         frecuencia: g.frecuencia,
+        categoria: g.categoria,
       }))
     );
   }
@@ -382,6 +390,7 @@ export async function getGastosAdmin(salonId: string): Promise<GastoAdmin[]> {
       monto: g.monto,
       metodoPago: g.metodo_pago as MetodoPago,
       bolsaId: g.bolsa_id,
+      categoria: (g.categoria ?? "otros") as CategoriaGasto,
       createdAt: g.created_at,
     })) ?? []
   );
@@ -395,6 +404,7 @@ export async function addGastoAdmin(
     metodoPago: MetodoPago;
     fecha: string;
     bolsaId: string | null;
+    categoria: CategoriaGasto;
   }
 ): Promise<void> {
   const { error } = await supabase.from("gastos_admin").insert({
@@ -404,6 +414,7 @@ export async function addGastoAdmin(
     metodo_pago: gasto.metodoPago,
     fecha: gasto.fecha,
     bolsa_id: gasto.bolsaId,
+    categoria: gasto.categoria,
   });
   if (error) console.error("Error adding gasto admin:", error);
 }
@@ -537,6 +548,7 @@ export function crearBolsasPlantilla(): Bolsa[] {
       porcentaje: 55,
       color: "#6366F1",
       acumulado: 0,
+      naturaleza: "reparto",
     },
     {
       id: uuidv4(),
@@ -544,6 +556,7 @@ export function crearBolsasPlantilla(): Bolsa[] {
       porcentaje: 30,
       color: "#F59E0B",
       acumulado: 0,
+      naturaleza: "gasto_operativo",
     },
     {
       id: uuidv4(),
@@ -551,6 +564,7 @@ export function crearBolsasPlantilla(): Bolsa[] {
       porcentaje: 10,
       color: "#10B981",
       acumulado: 0,
+      naturaleza: "reserva",
     },
     {
       id: uuidv4(),
@@ -558,6 +572,7 @@ export function crearBolsasPlantilla(): Bolsa[] {
       porcentaje: 5,
       color: "#EF4444",
       acumulado: 0,
+      naturaleza: "reparto",
     },
   ];
 }
@@ -590,9 +605,9 @@ async function seedSalonesIfEmpty(): Promise<Salon[]> {
       sheetId: "TU_SHEET_ID_AQUI",
       bolsas: crearBolsasPlantilla(),
       gastosFijos: [
-        { id: uuidv4(), nombre: "Renta", monto: 8000, frecuencia: "mensual" },
-        { id: uuidv4(), nombre: "Luz", monto: 1500, frecuencia: "mensual" },
-        { id: uuidv4(), nombre: "Internet", monto: 600, frecuencia: "mensual" },
+        { id: uuidv4(), nombre: "Renta", monto: 8000, frecuencia: "mensual", categoria: "renta" },
+        { id: uuidv4(), nombre: "Luz", monto: 1500, frecuencia: "mensual", categoria: "servicios" },
+        { id: uuidv4(), nombre: "Internet", monto: 600, frecuencia: "mensual", categoria: "servicios" },
       ],
       bolsaDefaultGastosId: null,
       comisionTarjeta: 0,
@@ -604,14 +619,14 @@ async function seedSalonesIfEmpty(): Promise<Salon[]> {
       color: "#059669",
       sheetId: "TU_SHEET_ID_2_AQUI",
       bolsas: [
-        { id: uuidv4(), nombre: "Operación", porcentaje: 50, color: "#8B5CF6", acumulado: 0 },
-        { id: uuidv4(), nombre: "Nómina", porcentaje: 25, color: "#EC4899", acumulado: 0 },
-        { id: uuidv4(), nombre: "Reserva", porcentaje: 15, color: "#14B8A6", acumulado: 0 },
-        { id: uuidv4(), nombre: "Administración JR", porcentaje: 10, color: "#F97316", acumulado: 0 },
+        { id: uuidv4(), nombre: "Operación", porcentaje: 50, color: "#8B5CF6", acumulado: 0, naturaleza: "reparto" },
+        { id: uuidv4(), nombre: "Nómina", porcentaje: 25, color: "#EC4899", acumulado: 0, naturaleza: "gasto_operativo" },
+        { id: uuidv4(), nombre: "Reserva", porcentaje: 15, color: "#14B8A6", acumulado: 0, naturaleza: "reserva" },
+        { id: uuidv4(), nombre: "Administración JR", porcentaje: 10, color: "#F97316", acumulado: 0, naturaleza: "reparto" },
       ],
       gastosFijos: [
-        { id: uuidv4(), nombre: "Renta", monto: 12000, frecuencia: "mensual" },
-        { id: uuidv4(), nombre: "Agua", monto: 400, frecuencia: "mensual" },
+        { id: uuidv4(), nombre: "Renta", monto: 12000, frecuencia: "mensual", categoria: "renta" },
+        { id: uuidv4(), nombre: "Agua", monto: 400, frecuencia: "mensual", categoria: "servicios" },
       ],
       bolsaDefaultGastosId: null,
       comisionTarjeta: 0,

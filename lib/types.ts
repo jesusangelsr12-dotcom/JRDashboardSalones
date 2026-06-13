@@ -12,12 +12,23 @@ export interface Salon {
   createdAt: string;
 }
 
+// Cómo trata la capa de Salud el dinero que entra a una bolsa.
+// gasto_operativo = sueldo por trabajo real (cuenta como gasto/nómina)
+// reserva = ahorro / utilidad apartada (NO es gasto)
+// reparto = dividendo / utilidad repartida (NO es gasto)
+export type NaturalezaBolsa = "gasto_operativo" | "reserva" | "reparto";
+
+// Categoría de un gasto registrado en la app (fijo o admin).
+// Los gastos del Google Sheet NO llevan categoría: son variables.
+export type CategoriaGasto = "nomina" | "renta" | "insumos" | "servicios" | "otros";
+
 export interface Bolsa {
   id: string;
   nombre: string;
   porcentaje: number;
   color: string;
   acumulado: number;
+  naturaleza: NaturalezaBolsa;
 }
 
 export interface GastoFijo {
@@ -25,6 +36,7 @@ export interface GastoFijo {
   nombre: string;
   monto: number;
   frecuencia: "semanal" | "mensual";
+  categoria: CategoriaGasto;
 }
 
 // ── Datos de Google Sheets ──
@@ -72,6 +84,7 @@ export interface Gasto {
   bolsaId?: string | null;
   source?: "sheets" | "admin";
   adminId?: string;
+  categoria?: CategoriaGasto; // solo gastos admin; los de Sheet son variables sin categoría
 }
 
 export type MetodoPago = "Efectivo" | "Tarjeta" | "Transferencia";
@@ -86,6 +99,7 @@ export interface GastoAdmin {
   monto: number;
   metodoPago: MetodoPago;
   bolsaId: string | null;
+  categoria: CategoriaGasto;
   createdAt: string;
 }
 

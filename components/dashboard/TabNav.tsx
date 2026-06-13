@@ -1,6 +1,6 @@
 "use client";
 
-export type TabId = "resumen" | "bolsas" | "graficas" | "tabla" | "finanzas";
+export type TabId = "resumen" | "bolsas" | "graficas" | "tabla" | "salud";
 
 interface TabNavProps {
   active: TabId;
@@ -13,7 +13,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "bolsas", label: "Bolsas" },
   { id: "graficas", label: "Gráficas" },
   { id: "tabla", label: "Tabla" },
-  { id: "finanzas", label: "Finanzas" },
+  { id: "salud", label: "Salud" },
 ];
 
 export default function TabNav({ active, onChange, salonColor }: TabNavProps) {
