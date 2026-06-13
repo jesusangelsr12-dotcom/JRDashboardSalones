@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { ResumenSemanal, CierreSemana, Salon, Cita, Gasto, SemanaDetectada, MovimientoBolsa } from "@/lib/types";
+import type { ResumenSemanal, CierreSemana, Salon, Cita, Gasto, SemanaDetectada, MovimientoBolsa, GastoFijo } from "@/lib/types";
 import {
   formatMoney,
   getLunesDeSemana,
@@ -39,7 +39,11 @@ function formatSemanaLabel(inicio: string, fin: string): string {
   return `${dia1} ${mes1} – ${dia2} ${mes2} ${anio}`;
 }
 
-function buildWhatsAppText(resumen: ResumenSemanal, semanaLabel: string): string {
+function buildWhatsAppText(
+  resumen: ResumenSemanal,
+  semanaLabel: string,
+  gastosFijos: GastoFijo[]
+): string {
   const lines: string[] = [];
   lines.push(`💰 *Distribución semana ${semanaLabel}*`);
   lines.push("");
@@ -48,6 +52,19 @@ function buildWhatsAppText(resumen: ResumenSemanal, semanaLabel: string): string
   }
   lines.push("");
   lines.push(`Total libre: ${formatMoney(resumen.libre)}`);
+
+  if (gastosFijos.length > 0) {
+    let totalFijos = 0;
+    lines.push("");
+    lines.push("🧾 *Gastos fijos*");
+    for (const gf of gastosFijos) {
+      const montoSemana = gf.frecuencia === "semanal" ? gf.monto : gf.monto / 4;
+      totalFijos += montoSemana;
+      lines.push(`• ${gf.nombre || "Sin nombre"}: ${formatMoney(montoSemana)}`);
+    }
+    lines.push(`Total gastos fijos: ${formatMoney(totalFijos)}`);
+  }
+
   return lines.join("\n");
 }
 
@@ -153,7 +170,7 @@ export default function BolsasSection({
   );
 
   const handleCopy = async () => {
-    const text = buildWhatsAppText(resumen, semanaActualLabel);
+    const text = buildWhatsAppText(resumen, semanaActualLabel, salon.gastosFijos);
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
