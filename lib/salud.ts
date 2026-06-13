@@ -390,13 +390,15 @@ export function calcularSalud(
   limite180.setDate(limite180.getDate() - 180);
   const clientasEnRiesgo: ClientaRiesgo[] = [];
   porClienta.forEach((arr, clienta) => {
+    // Necesita al menos 2 visitas: con una sola no hay frecuencia personal real.
+    if (arr.length < 2) return;
     const ultima = arr[arr.length - 1].fecha;
     if (ultima < limite180) return; // no activa
     const intervalos: number[] = [];
     for (let i = 1; i < arr.length; i++) {
       intervalos.push((arr[i].fecha.getTime() - arr[i - 1].fecha.getTime()) / 86400000);
     }
-    const frecuenciaPersonal = intervalos.length > 0 ? mediana(intervalos) : medianaSalon;
+    const frecuenciaPersonal = mediana(intervalos);
     const diasDesdeUltima = (hoy.getTime() - ultima.getTime()) / 86400000;
     if (frecuenciaPersonal > 0 && diasDesdeUltima > factorRiesgo * frecuenciaPersonal) {
       clientasEnRiesgo.push({

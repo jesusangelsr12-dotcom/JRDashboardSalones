@@ -120,4 +120,12 @@ describe("calcularSalud — clientas en riesgo", () => {
     const salud = calcularSalud(citas, [], gastosFijos, bolsas, 2026, 4, 0, hoy);
     expect(salud.clientasEnRiesgo.some((c) => c.clienta === "Ana")).toBe(true);
   });
+
+  it("NO incluye clientas con una sola visita (no tienen frecuencia real)", () => {
+    const hoy = new Date(2026, 4, 31, 12, 0, 0);
+    // Sole fue una sola vez hace 40 días: sin patrón → no debe aparecer en riesgo
+    const citas = [{ ...cita("Sole", 1, 500), fecha: new Date(2026, 3, 21) }];
+    const salud = calcularSalud(citas, [], gastosFijos, bolsas, 2026, 4, 0, hoy);
+    expect(salud.clientasEnRiesgo.some((c) => c.clienta === "Sole")).toBe(false);
+  });
 });

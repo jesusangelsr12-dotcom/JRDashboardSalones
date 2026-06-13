@@ -287,7 +287,7 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
       {showRiesgo && (
         <div className="bg-surface rounded-card border border-border overflow-hidden mb-6">
           <p className="text-[12px] text-text-secondary font-display leading-relaxed px-4 pt-4 pb-3 border-b border-border">
-            Clientas que ya pasaron su día habitual de regreso (más de 1.5× lo que suelen tardar) y aún están activas. Ordenadas por lo que han gastado contigo, para que contactes primero a las más valiosas.
+            Clientas con al menos 2 visitas que ya pasaron su día habitual de regreso (más de 1.5× lo que suelen tardar) y aún están activas. Ordenadas por lo que han gastado contigo, para que contactes primero a las más valiosas.
           </p>
           {salud.clientasEnRiesgo.length === 0 ? (
             <p className="text-[13px] text-text-secondary font-display text-center py-6">Sin clientas en riesgo 🎉</p>
