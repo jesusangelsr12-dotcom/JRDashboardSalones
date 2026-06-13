@@ -95,9 +95,9 @@ export function calcularResumenSemanal(
   gastosFijos: GastoFijo[],
   acumulados: Record<string, number>,
   bolsaDefaultGastosId: string | null,
-  comisionTarjeta: number = 0
+  comisionTarjeta: number = 0,
+  hoy: Date = new Date()
 ): ResumenSemanal {
-  const hoy = new Date();
   const lunesSemana = getLunesDeSemana(hoy);
   const domingoSemana = getDomingoDeSemana(hoy);
 

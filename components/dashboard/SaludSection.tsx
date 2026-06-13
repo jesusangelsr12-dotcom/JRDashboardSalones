@@ -96,13 +96,14 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
     <section className="pb-4">
       {/* ── Selector de mes ── */}
       <div className="flex items-center justify-center gap-4 mb-4">
-        <button onClick={() => setOffset(offset - 1)} className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center active:scale-90 transition-transform">
+        <button aria-label="Mes anterior" onClick={() => setOffset(offset - 1)} className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center active:scale-90 transition-transform">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
         <span className="text-[13px] font-display font-medium text-text-primary min-w-[120px] text-center">
           {MESES[month]} {year}
         </span>
         <button
+          aria-label="Mes siguiente"
           onClick={() => offset < 0 && setOffset(offset + 1)}
           disabled={offset >= 0}
           className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center active:scale-90 transition-transform disabled:opacity-30"

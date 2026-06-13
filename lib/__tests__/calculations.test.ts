@@ -43,6 +43,10 @@ const gastosFijos: GastoFijo[] = [
   { id: "gf1", nombre: "Renta", monto: 8000, frecuencia: "mensual", categoria: "renta" },
 ];
 
+// Fecha fija dentro de la semana de las citas de prueba (lun 23 feb – dom 1 mar 2026).
+// Se inyecta como "hoy" para que los tests no dependan de la fecha real del sistema.
+const HOY = new Date("2026-02-25T12:00:00");
+
 // ── Date helpers ──
 
 describe("getLunesDeSemana", () => {
@@ -97,7 +101,7 @@ describe("calcularResumenSemanal", () => {
     const acumulados = { b1: 1000, b2: 500 };
 
     const resumen = calcularResumenSemanal(
-      citas, [], bolsas, gastosFijos, acumulados, null
+      citas, [], bolsas, gastosFijos, acumulados, null, 0, HOY
     );
 
     expect(resumen.ingresos).toBe(5000);
@@ -111,7 +115,7 @@ describe("calcularResumenSemanal", () => {
     const acumulados = { b1: 1000, b2: 500 };
 
     const resumen = calcularResumenSemanal(
-      citas, gastos, bolsas, gastosFijos, acumulados, null
+      citas, gastos, bolsas, gastosFijos, acumulados, null, 0, HOY
     );
 
     const bolsaB1 = resumen.bolsas.find((b) => b.bolsaId === "b1");
@@ -124,7 +128,7 @@ describe("calcularResumenSemanal", () => {
     const acumulados = { b1: 1000, b2: 500 };
 
     const resumen = calcularResumenSemanal(
-      citas, gastos, bolsas, gastosFijos, acumulados, "b2" // default bolsa
+      citas, gastos, bolsas, gastosFijos, acumulados, "b2", 0, HOY // default bolsa
     );
 
     const bolsaB2 = resumen.bolsas.find((b) => b.bolsaId === "b2");
@@ -137,7 +141,7 @@ describe("calcularResumenSemanal", () => {
     const acumulados = { b1: 1000, b2: 500 };
 
     const resumen = calcularResumenSemanal(
-      citas, gastos, bolsas, gastosFijos, acumulados, null
+      citas, gastos, bolsas, gastosFijos, acumulados, null, 0, HOY
     );
 
     const totalGastosAsignados = resumen.bolsas.reduce((s, b) => s + b.gastosAsignados, 0);
@@ -149,7 +153,7 @@ describe("calcularResumenSemanal", () => {
     const acumulados = { b1: 0, b2: 0 };
 
     const resumen = calcularResumenSemanal(
-      citas, [], bolsas, gastosFijos, acumulados, null
+      citas, [], bolsas, gastosFijos, acumulados, null, 0, HOY
     );
 
     // libre = 3000
@@ -164,7 +168,7 @@ describe("calcularResumenSemanal", () => {
     const acumulados = { b1: 0, b2: 0 };
 
     const resumen = calcularResumenSemanal(
-      citas, [], bolsas, gastosFijos, acumulados, null
+      citas, [], bolsas, gastosFijos, acumulados, null, 0, HOY
     );
 
     expect(resumen.libre).toBeLessThan(0);
@@ -177,7 +181,7 @@ describe("calcularResumenSemanal", () => {
     const acumulados = { b1: 5000, b2: 3000 };
 
     const resumen = calcularResumenSemanal(
-      [], [], bolsas, gastosFijos, acumulados, null
+      [], [], bolsas, gastosFijos, acumulados, null, 0, HOY
     );
 
     expect(resumen.bolsas.find((b) => b.bolsaId === "b1")?.acumulado).toBe(5000);
@@ -193,7 +197,7 @@ describe("calcularResumenSemanal", () => {
     const acumulados = { b1: 0, b2: 0 };
 
     const resumen = calcularResumenSemanal(
-      citas, [], bolsas, gastosFijos, acumulados, null
+      citas, [], bolsas, gastosFijos, acumulados, null, 0, HOY
     );
 
     expect(resumen.porMetodo.Efectivo).toBe(1000);
