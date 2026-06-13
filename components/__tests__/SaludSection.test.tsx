@@ -45,8 +45,8 @@ describe("SaludSection — render + interacciones", () => {
 
   it("muestra el hero con utilidad del mes y el mes actual", () => {
     render(<SaludSection salon={salon} citas={citas} gastos={[]} salonColor={salon.color} />);
-    expect(screen.getByText("Utilidad del mes")).toBeInTheDocument();
     const hoy = new Date();
+    expect(screen.getByText(`Utilidad de ${MESES[hoy.getMonth()]}`)).toBeInTheDocument();
     expect(screen.getByText(`${MESES[hoy.getMonth()]} ${hoy.getFullYear()}`)).toBeInTheDocument();
   });
 
@@ -57,7 +57,7 @@ describe("SaludSection — render + interacciones", () => {
     expect(screen.getByText("Renta / ingreso")).toBeInTheDocument();
     expect(screen.getByText("Retención 90 días")).toBeInTheDocument();
     expect(screen.getByText("Punto de equilibrio")).toBeInTheDocument();
-    expect(screen.getByText("Días valle (8 semanas)")).toBeInTheDocument();
+    expect(screen.getByText("Días valle · promedio últimas 8 semanas")).toBeInTheDocument();
   });
 
   it("el botón 'Mes siguiente' está deshabilitado en el mes actual y 'Mes anterior' navega", () => {

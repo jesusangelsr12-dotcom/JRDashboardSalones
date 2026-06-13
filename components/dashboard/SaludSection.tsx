@@ -88,7 +88,7 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
 
   const g = colorSemaforo(salud.semaforoGlobal);
   const deltaUtilidad = salud.utilidad - saludPrev.utilidad;
-  const sc = salud.scorecard;
+  const mesPrevioLabel = MESES[(month + 11) % 12];
 
   const contactadasCount = salud.clientasEnRiesgo.filter((c) => contactadas[c.clienta] === semanaKey()).length;
 
@@ -121,35 +121,35 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: g.fg }} />
           {salud.semaforoGlobal === "verde" ? "Salón sano" : salud.semaforoGlobal === "ambar" ? "Atención" : salud.semaforoGlobal === "rojo" ? "En riesgo" : "Sin datos"}
         </div>
-        <p className="text-[11px] uppercase tracking-[0.08em] text-text-secondary font-display font-medium">Utilidad del mes</p>
+        <p className="text-[11px] uppercase tracking-[0.08em] text-text-secondary font-display font-medium">Utilidad de {MESES[month]}</p>
         <p className="font-numbers text-[44px] leading-none font-bold text-text-primary mt-1">{formatMoney(salud.utilidad)}</p>
         <p className="text-[13px] font-display font-medium mt-3" style={{ color: deltaUtilidad >= 0 ? "#1F9D55" : "#C0392B" }}>
-          {deltaUtilidad >= 0 ? "▲" : "▼"} {formatMoney(Math.abs(deltaUtilidad))} · margen {salud.margenNeto.valor.toFixed(1)}% vs mes anterior
+          {deltaUtilidad >= 0 ? "▲" : "▼"} {formatMoney(Math.abs(deltaUtilidad))} vs {mesPrevioLabel}
         </p>
       </div>
 
-      {/* ── Scorecard semanal ── */}
-      <p className="text-[11px] uppercase tracking-[0.08em] text-text-secondary font-display font-medium mb-3 mt-4">Scorecard de la semana</p>
+      {/* ── Resumen del mes (cambia al navegar) ── */}
+      <p className="text-[11px] uppercase tracking-[0.08em] text-text-secondary font-display font-medium mb-3 mt-4">Resumen de {MESES[month]}</p>
       <div className="grid grid-cols-2 gap-3 mb-6">
         <ScoreChip
-          valor={formatMoney(sc.ingresoSemana)}
-          label="Ingreso de la semana"
-          delta={pctDelta(sc.ingresoSemana, sc.ingresoSemanaPrevia)}
+          valor={formatMoney(salud.ingresosMes)}
+          label="Ingreso del mes"
+          delta={pctDelta(salud.ingresosMes, saludPrev.ingresosMes)}
         />
         <ScoreChip
-          valor={String(sc.citasProximaSemana)}
-          label="Citas próxima semana"
-          deltaText={sc.citasProximaSemana > 0 ? "agenda con citas" : "agenda vacía"}
-          deltaUp={sc.citasProximaSemana > 0}
+          valor={String(salud.visitasMes)}
+          label="Visitas del mes"
+          deltaText={`${MESES[(month + 11) % 12]}: ${saludPrev.visitasMes}`}
+          deltaUp={salud.visitasMes >= saludPrev.visitasMes}
         />
         <ScoreChip
-          valor={formatMoney(sc.ticketSemana)}
-          label="Ticket promedio semana"
+          valor={salud.ticketPromedio.semaforo === "gris" ? "—" : formatMoney(salud.ticketPromedio.valor)}
+          label="Ticket promedio"
         />
         <ScoreChip
-          valor={formatMoney(sc.gastoAcumuladoMes)}
-          label="Gasto acumulado del mes"
-          delta={pctDelta(sc.gastoAcumuladoMes, sc.gastoPromedioMesesPrevios)}
+          valor={formatMoney(salud.gastosTotales)}
+          label="Gasto del mes"
+          delta={pctDelta(salud.gastosTotales, saludPrev.gastosTotales)}
           invertDelta
         />
       </div>
@@ -181,8 +181,15 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
         </div>
       </div>
 
+      {/* ── Operación · al día de hoy (no depende del mes navegado) ── */}
+      <div className="flex items-center gap-3 mb-4 mt-2">
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-[10px] uppercase tracking-[0.1em] text-text-secondary font-display font-semibold">Operación · al día de hoy</span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+
       {/* ── Días valle (heatmap) ── */}
-      <p className="text-[11px] uppercase tracking-[0.08em] text-text-secondary font-display font-medium mb-3">Días valle (8 semanas)</p>
+      <p className="text-[11px] uppercase tracking-[0.08em] text-text-secondary font-display font-medium mb-3">Días valle · promedio últimas 8 semanas</p>
       <div className="bg-surface rounded-card border border-border p-4 mb-6">
         <div className="flex items-end gap-2 h-28">
           {salud.citasPorDia.map((d) => {

@@ -8,7 +8,7 @@
 // ════════════════════════════════════════════════════════════════
 
 import type { Cita, Gasto, GastoFijo, Bolsa, CategoriaGasto } from "./types";
-import { costoNeto, getInicioMes, getFinMes, getLunesDeSemana, getDomingoDeSemana, enRango } from "./calculations";
+import { costoNeto, getInicioMes, getFinMes, enRango } from "./calculations";
 
 export type Semaforo = "verde" | "ambar" | "rojo" | "gris";
 
@@ -38,17 +38,9 @@ export interface ClientaRiesgo {
   visitasTotales: number;
 }
 
-export interface Scorecard {
-  ingresoSemana: number;
-  ingresoSemanaPrevia: number;     // misma semana ~mes anterior (-28 días)
-  citasProximaSemana: number;
-  ticketSemana: number;
-  gastoAcumuladoMes: number;
-  gastoPromedioMesesPrevios: number; // a la misma altura del mes
-}
-
 export interface SaludSnapshot {
   ingresosMes: number;
+  visitasMes: number;
   // Capa A · Rentabilidad
   margenNeto: KpiResultado;        // valor = % margen
   costoPersonal: KpiResultado;     // valor = % nómina/ingreso
@@ -67,7 +59,6 @@ export interface SaludSnapshot {
   clientasEnRiesgo: ClientaRiesgo[];
   // Global
   semaforoGlobal: Semaforo;
-  scorecard: Scorecard;
 }
 
 // ── Helpers ──
@@ -344,52 +335,9 @@ export function calcularSalud(
     ? "ambar"
     : "verde";
 
-  // ── Scorecard semanal ──
-  const lunesActual = getLunesDeSemana(hoy);
-  const domingoActual = getDomingoDeSemana(hoy);
-  const citasSemana = enRango(citas, lunesActual, domingoActual);
-  const ingresoSemana = citasSemana.reduce((s, c) => s + costoNeto(c.costo, c.metodoPago, comisionTarjeta), 0);
-  const visitasSemana = agruparVisitas(citasSemana, comisionTarjeta).length;
-
-  const lunesPrevio = new Date(lunesActual); lunesPrevio.setDate(lunesPrevio.getDate() - 28);
-  const domingoPrevio = new Date(lunesPrevio); domingoPrevio.setDate(domingoPrevio.getDate() + 6); domingoPrevio.setHours(23, 59, 59, 999);
-  const ingresoSemanaPrevia = enRango(citas, lunesPrevio, domingoPrevio)
-    .reduce((s, c) => s + costoNeto(c.costo, c.metodoPago, comisionTarjeta), 0);
-
-  const lunesProx = new Date(lunesActual); lunesProx.setDate(lunesProx.getDate() + 7);
-  const domingoProx = new Date(lunesProx); domingoProx.setDate(domingoProx.getDate() + 6); domingoProx.setHours(23, 59, 59, 999);
-  const citasProximaSemana = agruparVisitas(enRango(citas, lunesProx, domingoProx), comisionTarjeta).length;
-
-  // Gasto acumulado del mes hasta hoy vs promedio de 3 meses previos a la misma altura
-  const diaDelMes = hoy.getDate();
-  const gastoAcumuladoMes = gastosMes
-    .filter((g) => g.fecha.getDate() <= diaDelMes)
-    .reduce((s, g) => s + g.monto, 0);
-  const gastosPrevios: number[] = [];
-  for (let i = 1; i <= 3; i++) {
-    const d = new Date(year, month - i, 1);
-    const ini = getInicioMes(d.getFullYear(), d.getMonth());
-    const finMesPrevio = getFinMes(d.getFullYear(), d.getMonth());
-    // "Misma altura del mes": acumular hasta el mismo día, sin desbordar a meses
-    // cortos (ej. día 31 sobre un mes de 30 días rodaría al mes siguiente).
-    const acum = enRango(gastos, ini, finMesPrevio)
-      .filter((g) => g.fecha.getDate() <= diaDelMes)
-      .reduce((s, g) => s + g.monto, 0);
-    gastosPrevios.push(acum);
-  }
-  const gastoPromedioMesesPrevios = gastosPrevios.length > 0 ? gastosPrevios.reduce((a, b) => a + b, 0) / gastosPrevios.length : 0;
-
-  const scorecard: Scorecard = {
-    ingresoSemana,
-    ingresoSemanaPrevia,
-    citasProximaSemana,
-    ticketSemana: visitasSemana > 0 ? ingresoSemana / visitasSemana : 0,
-    gastoAcumuladoMes,
-    gastoPromedioMesesPrevios,
-  };
-
   return {
     ingresosMes,
+    visitasMes: visitasMes.length,
     margenNeto,
     costoPersonal,
     puntoEquilibrio,
@@ -404,7 +352,6 @@ export function calcularSalud(
     frecuenciaVisita,
     clientasEnRiesgo,
     semaforoGlobal,
-    scorecard,
   };
 }
 
