@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup — Salud del Salón (estilo Coinbase · paleta JR)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Paleta JR (cálida) sobre estructura Coinbase (limpia) */
+    --bg:#F8F3ED; --surface:#FFFFFF; --ink:#1A1410; --ink-2:#6B5D50; --ink-3:#A89A8B;
+    --line:#ECE3D8; --brand:#7B4F2E; --gold:#C8963C;
+    --good:#1F9D55; --good-bg:#E7F4EC; --warn:#C57B14; --warn-bg:#FBF0DC; --bad:#C0392B; --bad-bg:#FBEAE7;
+    --radius:22px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-font-smoothing:antialiased;}
+  body{font-family:'Inter',-apple-system,system-ui,sans-serif; background:#E8DECF; color:var(--ink);
+       display:flex; flex-wrap:wrap; gap:32px; justify-content:center; padding:40px 20px; line-height:1.45;}
+
+  /* ── Marco de teléfono ── */
+  .phone{width:380px; height:820px; background:var(--bg); border-radius:44px; overflow:hidden; position:relative;
+         box-shadow:0 30px 80px rgba(60,40,20,0.28), 0 0 0 11px #1a1410, 0 0 0 13px #2a2018;
+         display:flex; flex-direction:column;}
+  .notch{position:absolute; top:0; left:50%; transform:translateX(-50%); width:140px; height:30px;
+         background:#1a1410; border-radius:0 0 20px 20px; z-index:30;}
+  .statusbar{height:48px; display:flex; align-items:flex-end; justify-content:space-between; padding:0 26px 6px;
+             font-size:13px; font-weight:600; color:var(--ink); flex-shrink:0;}
+  .scroll{flex:1; overflow-y:auto; padding:0 20px 110px;}
+  .scroll::-webkit-scrollbar{display:none;}
+  .screen-label{position:absolute; top:-30px; left:0; width:100%; text-align:center; font-size:12px;
+                font-weight:600; color:#7a6b58; letter-spacing:0.04em;}
+
+  /* ── Header ── */
+  .topbar{display:flex; align-items:center; justify-content:space-between; padding:6px 4px 18px;}
+  .topbar .salon{display:flex; align-items:center; gap:10px;}
+  .avatar{width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,var(--brand),var(--gold));
+          display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:15px;}
+  .salon h1{font-size:17px; font-weight:700; letter-spacing:-0.01em;}
+  .salon p{font-size:12px; color:var(--ink-3); font-weight:500;}
+  .icon-btn{width:38px; height:38px; border-radius:50%; background:var(--surface); border:1px solid var(--line);
+            display:flex; align-items:center; justify-content:center; color:var(--ink-2);}
+
+  /* ── Hero (semáforo + número grande, estilo balance Coinbase) ── */
+  .hero{text-align:center; padding:14px 0 8px;}
+  .hero .status-pill{display:inline-flex; align-items:center; gap:7px; padding:7px 16px; border-radius:30px;
+                     font-size:13px; font-weight:700; letter-spacing:0.01em; margin-bottom:18px;}
+  .status-pill.good{background:var(--good-bg); color:var(--good);}
+  .status-pill .dot{width:9px; height:9px; border-radius:50%; background:currentColor;}
+  .hero .overline{font-size:12px; color:var(--ink-3); font-weight:600; letter-spacing:0.06em; text-transform:uppercase;}
+  .hero .big{font-size:50px; font-weight:800; letter-spacing:-0.03em; margin-top:4px; line-height:1;}
+  .hero .delta{display:inline-flex; align-items:center; gap:5px; margin-top:12px; font-size:14px; font-weight:600;
+               color:var(--good);}
+  .hero .delta .arrow{font-size:12px;}
+
+  /* ── Sparkline ── */
+  .spark{margin:22px 0 8px; height:72px;}
+
+  /* ── Segmented control (períodos, estilo Coinbase) ── */
+  .segmented{display:flex; background:#EDE3D6; border-radius:30px; padding:4px; margin:14px 0 26px;}
+  .segmented button{flex:1; border:none; background:transparent; padding:9px 0; font-size:13px; font-weight:600;
+                    color:var(--ink-2); border-radius:24px; font-family:inherit; cursor:pointer;}
+  .segmented button.active{background:var(--surface); color:var(--ink); box-shadow:0 2px 6px rgba(60,40,20,0.1);}
+
+  /* ── Scorecard chips (5 números del lunes) ── */
+  .section-head{display:flex; align-items:center; justify-content:space-between; margin:6px 4px 14px;}
+  .section-head h2{font-size:15px; font-weight:700; letter-spacing:-0.01em;}
+  .section-head a{font-size:13px; font-weight:600; color:var(--brand); text-decoration:none;}
+  .chips{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:28px;}
+  .chip{background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:16px;}
+  .chip .v{font-size:22px; font-weight:800; letter-spacing:-0.02em;}
+  .chip .l{font-size:11.5px; color:var(--ink-2); font-weight:500; margin-top:3px; line-height:1.3;}
+  .chip .tiny-delta{font-size:11px; font-weight:700; margin-top:8px;}
+  .up{color:var(--good);} .down{color:var(--bad);}
+
+  /* ── KPI list rows (estilo lista de activos Coinbase) ── */
+  .kpi-group{margin-bottom:26px;}
+  .kpi-group .layer{font-size:12px; font-weight:700; color:var(--ink-3); letter-spacing:0.06em;
+                    text-transform:uppercase; margin:0 4px 10px;}
+  .kpi-list{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;}
+  .kpi-row{display:flex; align-items:center; gap:14px; padding:15px 18px; border-bottom:1px solid var(--line);}
+  .kpi-row:last-child{border-bottom:none;}
+  .kpi-row .ico{width:40px; height:40px; border-radius:12px; flex-shrink:0; display:flex; align-items:center;
+                justify-content:center; font-size:18px;}
+  .ico.good{background:var(--good-bg);} .ico.warn{background:var(--warn-bg);} .ico.bad{background:var(--bad-bg);}
+  .kpi-row .mid{flex:1; min-width:0;}
+  .kpi-row .name{font-size:14.5px; font-weight:600; letter-spacing:-0.01em;}
+  .kpi-row .sub{font-size:12px; color:var(--ink-3); margin-top:2px;}
+  .kpi-row .right{text-align:right; flex-shrink:0;}
+  .kpi-row .val{font-size:15px; font-weight:700; letter-spacing:-0.01em;}
+  .badge{display:inline-block; padding:3px 9px; border-radius:20px; font-size:10.5px; font-weight:700; margin-top:4px;}
+  .badge.good{background:var(--good-bg); color:var(--good);}
+  .badge.warn{background:var(--warn-bg); color:var(--warn);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad);}
+  .badge.neutral{background:#EDE3D6; color:var(--ink-2);}
+
+  /* ── Barra de progreso punto de equilibrio ── */
+  .pe-card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:20px; margin-bottom:26px;}
+  .pe-card .pe-top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;}
+  .pe-card .pe-top .t{font-size:14px; font-weight:700;}
+  .pe-card .pe-top .x{font-size:13px; font-weight:700; color:var(--good);}
+  .bar{height:12px; background:#EDE3D6; border-radius:8px; overflow:hidden; position:relative;}
+  .bar .fill{height:100%; background:linear-gradient(90deg,var(--good),#3DBE72); border-radius:8px;}
+  .bar .pe-mark{position:absolute; top:-4px; height:20px; width:2px; background:var(--ink); border-radius:2px;}
+  .pe-labels{display:flex; justify-content:space-between; margin-top:10px; font-size:11.5px; color:var(--ink-2); font-weight:500;}
+
+  /* ── Lista de clientas en riesgo ── */
+  .risk-row{display:flex; align-items:center; gap:13px; padding:14px 4px; border-bottom:1px solid var(--line);}
+  .risk-row:last-child{border-bottom:none;}
+  .risk-av{width:42px; height:42px; border-radius:50%; background:#EDE3D6; display:flex; align-items:center;
+           justify-content:center; font-weight:700; font-size:14px; color:var(--brand); flex-shrink:0;}
+  .risk-row .mid{flex:1; min-width:0;}
+  .risk-row .name{font-size:14.5px; font-weight:600;}
+  .risk-row .sub{font-size:12px; color:var(--ink-3); margin-top:2px;}
+  .risk-row .lifetime{font-size:13px; font-weight:700; color:var(--ink); margin-right:2px;}
+  .wa-btn{width:40px; height:40px; border-radius:50%; background:#25D366; display:flex; align-items:center;
+          justify-content:center; flex-shrink:0; box-shadow:0 4px 10px rgba(37,211,102,0.3);}
+  .check{width:40px; height:40px; border-radius:50%; background:var(--good-bg); color:var(--good);
+         display:flex; align-items:center; justify-content:center; flex-shrink:0; font-weight:800;}
+
+  /* ── Jugada de 90 días ── */
+  .play-card{background:linear-gradient(150deg,var(--brand),#5C3A20); color:#fff; border-radius:var(--radius);
+             padding:22px; margin-bottom:26px;}
+  .play-card .tag{font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; opacity:0.8;}
+  .play-card h3{font-size:18px; font-weight:700; margin-top:6px; letter-spacing:-0.01em;}
+  .play-card .goal{font-size:13px; opacity:0.9; margin-top:8px;}
+  .play-prog{margin-top:18px;}
+  .play-prog .row{display:flex; justify-content:space-between; font-size:12.5px; font-weight:600; margin-bottom:8px;}
+  .play-bar{height:10px; background:rgba(255,255,255,0.22); border-radius:8px; overflow:hidden;}
+  .play-bar .fill{height:100%; background:var(--gold); border-radius:8px;}
+  .play-card .days{font-size:11.5px; opacity:0.75; margin-top:10px;}
+
+  /* ── Alerta cierre mensual ── */
+  .alert{display:flex; gap:12px; background:var(--bad-bg); border:1px solid #F2CFC9; border-radius:18px;
+         padding:15px 16px; margin-bottom:14px;}
+  .alert .ai{font-size:18px;}
+  .alert .at{font-size:13px; font-weight:700; color:var(--bad);}
+  .alert .ad{font-size:12px; color:#8C4339; margin-top:2px;}
+
+  /* ── Tab bar ── */
+  .tabbar{position:absolute; bottom:0; left:0; width:100%; height:88px; background:rgba(255,255,255,0.92);
+          backdrop-filter:blur(14px); border-top:1px solid var(--line); display:flex; padding:12px 8px 0; z-index:20;}
+  .tabbar .tab{flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; font-size:10px;
+               font-weight:600; color:var(--ink-3);}
+  .tabbar .tab.active{color:var(--brand);}
+  .tabbar .tab svg{width:23px; height:23px;}
+
+  .caption{width:100%; max-width:900px; text-align:center; color:#5c4d3d; font-size:13px; margin:8px auto 0;}
+</style>
+</head>
+<body>
+
+<!-- ════════ PANTALLA 1 · SALUD (HOME) ════════ -->
+<div style="position:relative;">
+  <div class="screen-label">1 · Salud — vista principal</div>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="statusbar"><span>9:41</span><span>📶 🔋</span></div>
+    <div class="scroll">
+
+      <div class="topbar">
+        <div class="salon">
+          <div class="avatar">SC</div>
+          <div><h1>Salón Centro</h1><p>Junio 2026 · Monterrey</p></div>
+        </div>
+        <div class="icon-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </div>
+      </div>
+
+      <div class="hero">
+        <div class="status-pill good"><span class="dot"></span>Salón sano</div>
+        <div class="overline">Utilidad del mes</div>
+        <div class="big">$48,250</div>
+        <div class="delta"><span class="arrow">▲</span> $6,120 (14.5%) vs mayo</div>
+      </div>
+
+      <!-- Sparkline 6 meses -->
+      <svg class="spark" width="100%" viewBox="0 0 340 72" preserveAspectRatio="none">
+        <defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#1F9D55" stop-opacity="0.22"/><stop offset="100%" stop-color="#1F9D55" stop-opacity="0"/>
+        </linearGradient></defs>
+        <path d="M0,52 L57,46 L113,54 L170,38 L227,42 L283,28 L340,18" fill="none" stroke="#1F9D55" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M0,52 L57,46 L113,54 L170,38 L227,42 L283,28 L340,18 L340,72 L0,72 Z" fill="url(#g1)"/>
+      </svg>
+
+      <div class="segmented">
+        <button>Semana</button><button class="active">Mes</button><button>Año</button>
+      </div>
+
+      <div class="section-head"><h2>Scorecard del lunes</h2><a href="#">Ver todo</a></div>
+      <div class="chips">
+        <div class="chip"><div class="v">$11,400</div><div class="l">Ingreso de la semana</div><div class="tiny-delta up">▲ 8% vs sem. ant.</div></div>
+        <div class="chip"><div class="v">23</div><div class="l">Citas agendadas próx. semana</div><div class="tiny-delta up">▲ agenda sana</div></div>
+        <div class="chip"><div class="v">$495</div><div class="l">Ticket promedio</div><div class="tiny-delta down">▼ 3% revisar mix</div></div>
+        <div class="chip"><div class="v">6 / 14</div><div class="l">Clientas en riesgo contactadas</div><div class="tiny-delta down">faltan 8</div></div>
+      </div>
+
+      <!-- KPIs por capa -->
+      <div class="kpi-group">
+        <div class="layer">A · Rentabilidad</div>
+        <div class="kpi-list">
+          <div class="kpi-row"><div class="ico good">💰</div><div class="mid"><div class="name">Margen neto</div><div class="sub">Meta ≥ 10%</div></div><div class="right"><div class="val">18.2%</div><span class="badge good">Sano</span></div></div>
+          <div class="kpi-row"><div class="ico warn">👥</div><div class="mid"><div class="name">Costo de personal</div><div class="sub">Ideal 40–50%</div></div><div class="right"><div class="val">52%</div><span class="badge warn">Atento</span></div></div>
+          <div class="kpi-row"><div class="ico good">🏠</div><div class="mid"><div class="name">Renta / ingreso</div><div class="sub">Ideal 8–12%</div></div><div class="right"><div class="val">10.4%</div><span class="badge good">Sano</span></div></div>
+        </div>
+      </div>
+
+      <!-- Punto de equilibrio: barra de progreso -->
+      <div class="pe-card">
+        <div class="pe-top"><span class="t">Punto de equilibrio</span><span class="x">1.34× cubierto</span></div>
+        <div class="bar">
+          <div class="fill" style="width:74%"></div>
+          <div class="pe-mark" style="left:55%"></div>
+        </div>
+        <div class="pe-labels"><span>Venta $58,400</span><span>PE $43,600</span></div>
+      </div>
+
+      <div class="kpi-group">
+        <div class="layer">C · Clientas</div>
+        <div class="kpi-list">
+          <div class="kpi-row"><div class="ico bad">🔁</div><div class="mid"><div class="name">Retención 90 días</div><div class="sub">Meta &gt; 35%</div></div><div class="right"><div class="val">18%</div><span class="badge bad">Riesgo</span></div></div>
+          <div class="kpi-row"><div class="ico good">⭐</div><div class="mid"><div class="name">Ingreso recurrente</div><div class="sub">Meta &gt; 60%</div></div><div class="right"><div class="val">64%</div><span class="badge good">Sano</span></div></div>
+          <div class="kpi-row"><div class="ico warn">⚠️</div><div class="mid"><div class="name">Clientas en riesgo</div><div class="sub">14 por contactar</div></div><div class="right"><div class="val">14</div><span class="badge warn">Acción</span></div></div>
+        </div>
+      </div>
+
+    </div>
+    <div class="tabbar">
+      <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Resumen</div>
+      <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Bolsas</div>
+      <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 4 4 5-6"/></svg>Gráficas</div>
+      <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Salud</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ PANTALLA 2 · CLIENTAS EN RIESGO ════════ -->
+<div style="position:relative;">
+  <div class="screen-label">2 · Clientas en riesgo (Jugada 1)</div>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="statusbar"><span>9:41</span><span>📶 🔋</span></div>
+    <div class="scroll">
+
+      <div class="topbar">
+        <div class="salon">
+          <div class="icon-btn" style="margin-right:2px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg></div>
+          <div><h1>Clientas en riesgo</h1><p>Salón Centro · ordenadas por valor</p></div>
+        </div>
+      </div>
+
+      <div class="hero" style="padding:8px 0 4px;">
+        <div class="overline">Valor en riesgo este mes</div>
+        <div class="big" style="font-size:40px;">$34,800</div>
+        <div class="delta" style="color:var(--warn);"><span class="arrow">●</span> 14 clientas · 6 contactadas</div>
+      </div>
+
+      <div class="play-card" style="margin-top:22px;">
+        <div class="tag">Jugada en curso</div>
+        <h3>Reactivación por WhatsApp</h3>
+        <div class="goal">Recuperar una clienta cuesta 5–7× menos que conseguir una nueva.</div>
+        <div class="play-prog">
+          <div class="row"><span>Reactivadas 3 de 14</span><span>Meta 15–20%</span></div>
+          <div class="play-bar"><div class="fill" style="width:42%"></div></div>
+          <div class="days">Quedan 12 días del ciclo semanal</div>
+        </div>
+      </div>
+
+      <div class="section-head"><h2>Por contactar</h2><a href="#">Filtrar</a></div>
+
+      <div class="risk-row">
+        <div class="risk-av">MG</div>
+        <div class="mid"><div class="name">María González</div><div class="sub">Última visita: hace 68 días · debió volver en 35</div></div>
+        <div class="lifetime">$8.4k</div>
+        <div class="wa-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.8 4.9-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-1.7-.1-2.6-.9-4.3-3.5-4.4-3.6-.1-.2-1.1-1.4-1.1-2.6s.6-1.8.9-2.1c.2-.2.4-.3.6-.3h.4c.1 0 .3 0 .5.4l.7 1.7c.1.1.1.3 0 .4l-.3.5c-.1.1-.2.3-.1.5.1.1.5.9 1.2 1.4.8.7 1.5.9 1.7 1 .1 0 .3 0 .4-.1l.6-.7c.2-.2.3-.2.5-.1l1.6.8c.2.1.4.2.4.3.1.1.1.6-.1 1.1z"/></svg></div>
+      </div>
+      <div class="risk-row">
+        <div class="risk-av">LR</div>
+        <div class="mid"><div class="name">Laura Ramírez</div><div class="sub">Última visita: hace 54 días · debió volver en 30</div></div>
+        <div class="lifetime">$6.1k</div>
+        <div class="wa-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.8 4.9-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-1.7-.1-2.6-.9-4.3-3.5-4.4-3.6-.1-.2-1.1-1.4-1.1-2.6s.6-1.8.9-2.1c.2-.2.4-.3.6-.3h.4c.1 0 .3 0 .5.4l.7 1.7c.1.1.1.3 0 .4l-.3.5c-.1.1-.2.3-.1.5.1.1.5.9 1.2 1.4.8.7 1.5.9 1.7 1 .1 0 .3 0 .4-.1l.6-.7c.2-.2.3-.2.5-.1l1.6.8c.2.1.4.2.4.3.1.1.1.6-.1 1.1z"/></svg></div>
+      </div>
+      <div class="risk-row" style="opacity:0.6;">
+        <div class="risk-av">AS</div>
+        <div class="mid"><div class="name">Ana Sánchez</div><div class="sub">Contactada hace 2 días</div></div>
+        <div class="check">✓</div>
+      </div>
+      <div class="risk-row">
+        <div class="risk-av">PV</div>
+        <div class="mid"><div class="name">Patricia Vega</div><div class="sub">Última visita: hace 92 días · sin teléfono</div></div>
+        <div class="lifetime">$3.9k</div>
+        <div class="icon-btn" style="opacity:0.5;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+      </div>
+
+    </div>
+    <div class="tabbar">
+      <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Resumen</div>
+      <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Bolsas</div>
+      <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 4 4 5-6"/></svg>Gráficas</div>
+      <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Salud</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ PANTALLA 3 · CIERRE MENSUAL + DÍAS VALLE ════════ -->
+<div style="position:relative;">
+  <div class="screen-label">3 · Cierre mensual + días valle</div>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="statusbar"><span>9:41</span><span>📶 🔋</span></div>
+    <div class="scroll">
+
+      <div class="topbar">
+        <div class="salon">
+          <div class="avatar">SC</div>
+          <div><h1>Cierre de mayo</h1><p>Generado el 1 de junio</p></div>
+        </div>
+      </div>
+
+      <div class="section-head"><h2>Top 3 alertas</h2></div>
+      <div class="alert">
+        <div class="ai">🔴</div>
+        <div><div class="at">Retención cayó a 18%</div><div class="ad">Bajó de 27% → 18% en 2 meses. Umbral rojo &lt; 20%.</div></div>
+      </div>
+      <div class="alert" style="background:var(--warn-bg); border-color:#F0DDB8;">
+        <div class="ai">🟠</div>
+        <div><div class="at" style="color:var(--warn)">Costo de personal 52%</div><div class="ad" style="color:#8A5E1A;">Cruzó el 50%. Las ventas bajaron, el sueldo fijo no.</div></div>
+      </div>
+      <div class="alert" style="background:var(--warn-bg); border-color:#F0DDB8; margin-bottom:26px;">
+        <div class="ai">🟠</div>
+        <div><div class="at" style="color:var(--warn)">Ticket promedio −3%</div><div class="ad" style="color:#8A5E1A;">$510 → $495. Vigilar descuentos o mix de servicio.</div></div>
+      </div>
+
+      <div class="section-head"><h2>Días valle</h2><a href="#">Promoción</a></div>
+      <div class="kpi-list" style="padding:18px; margin-bottom:26px;">
+        <div style="display:flex; gap:8px; align-items:flex-end; height:120px;">
+          <div style="flex:1; text-align:center;"><div style="background:#EDE3D6; height:42%; border-radius:6px;"></div><div style="font-size:11px; color:var(--bad); font-weight:700; margin-top:6px;">L</div></div>
+          <div style="flex:1; text-align:center;"><div style="background:var(--bad-bg); border:1.5px solid var(--bad); height:30%; border-radius:6px;"></div><div style="font-size:11px; color:var(--bad); font-weight:700; margin-top:6px;">M</div></div>
+          <div style="flex:1; text-align:center;"><div style="background:#EDE3D6; height:55%; border-radius:6px;"></div><div style="font-size:11px; color:var(--ink-3); font-weight:600; margin-top:6px;">M</div></div>
+          <div style="flex:1; text-align:center;"><div style="background:var(--bad-bg); border:1.5px solid var(--bad); height:38%; border-radius:6px;"></div><div style="font-size:11px; color:var(--bad); font-weight:700; margin-top:6px;">J</div></div>
+          <div style="flex:1; text-align:center;"><div style="background:var(--brand); height:78%; border-radius:6px;"></div><div style="font-size:11px; color:var(--ink-3); font-weight:600; margin-top:6px;">V</div></div>
+          <div style="flex:1; text-align:center;"><div style="background:var(--gold); height:100%; border-radius:6px;"></div><div style="font-size:11px; color:var(--ink-3); font-weight:600; margin-top:6px;">S</div></div>
+          <div style="flex:1; text-align:center;"><div style="background:#EDE3D6; height:20%; border-radius:6px;"></div><div style="font-size:11px; color:var(--ink-3); font-weight:600; margin-top:6px;">D</div></div>
+        </div>
+        <div style="font-size:12px; color:var(--ink-2); margin-top:14px; font-weight:500; text-align:center;">
+          Martes y jueves son tus 2 días flojos · resaltados en rojo
+        </div>
+      </div>
+
+      <div class="section-head"><h2>Frecuencia de visita</h2></div>
+      <div class="kpi-list">
+        <div class="kpi-row"><div class="ico good">📅</div><div class="mid"><div class="name">Mediana del salón</div><div class="sub">Estable 30–50 días</div></div><div class="right"><div class="val">38 días</div><span class="badge good">Sano</span></div></div>
+        <div class="kpi-row"><div class="ico good">✂️</div><div class="mid"><div class="name">Citas por estilista</div><div class="sub">Productividad mensual</div></div><div class="right"><div class="val">+</div><span class="badge neutral">Próximo</span></div></div>
+      </div>
+
+    </div>
+    <div class="tabbar">
+      <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Resumen</div>
+      <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Bolsas</div>
+      <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 4 4 5-6"/></svg>Gráficas</div>
+      <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Salud</div>
+    </div>
+  </div>
+</div>
+
+<p class="caption">Mockup de referencia · estructura visual estilo Coinbase iOS (hero grande, segmented control, filas de lista con pills de color, fondo claro y mucho aire) aplicada a la paleta cálida de JR. Números ilustrativos, no reales.</p>
+
+</body>
+</html>
