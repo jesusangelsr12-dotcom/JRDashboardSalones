@@ -3,14 +3,16 @@
 import { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Salon, Cita, Gasto } from "@/lib/types";
-import { formatMoney } from "@/lib/calculations";
+import { formatMoney, costoNeto } from "@/lib/calculations";
 import {
   calcularSalud,
   colorSemaforo,
   DOW_LABELS,
   DOW_LABELS_LARGO,
   PE_COBERTURA_VERDE,
+  FACTOR_RIESGO_DEFAULT,
   type KpiResultado,
+  type ClientaRiesgo,
 } from "@/lib/salud";
 import EstadoResultados from "./EstadoResultados";
 import Modal from "@/components/ui/Modal";
@@ -37,21 +39,29 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
   // "Hoy" se refresca al recuperar foco (igual que el refetch de datos), para
   // que los KPIs por día no queden corridos si la app queda abierta tras la medianoche.
   const [hoy, setHoy] = useState(() => new Date());
-  const [offset, setOffset] = useState(0); // 0 = mes actual, -1 = mes anterior...
+  const [modo, setModo] = useState<"mes" | "ano">("mes");
+  const [offset, setOffset] = useState(0); // 0 = periodo actual, -1 = anterior...
   const [showDetalle, setShowDetalle] = useState(false);
   const [showRiesgo, setShowRiesgo] = useState(true);
   const [contactadas, setContactadas] = useState<Record<string, string>>({});
   const [kpiDetalle, setKpiDetalle] = useState<{ nombre: string; kpi: KpiResultado; formato: (v: number) => string } | null>(null);
+  const [clientaDetalle, setClientaDetalle] = useState<ClientaRiesgo | null>(null);
 
+  // "Hoy" solo se actualiza al cambiar de día (evita recálculos al recuperar foco).
   useEffect(() => {
-    const refresh = () => setHoy(new Date());
+    const refresh = () => setHoy((prev) => (new Date().toDateString() === prev.toDateString() ? prev : new Date()));
     window.addEventListener("focus", refresh);
     return () => window.removeEventListener("focus", refresh);
   }, []);
 
-  const ref = new Date(hoy.getFullYear(), hoy.getMonth() + offset, 1);
-  const year = ref.getFullYear();
-  const month = ref.getMonth();
+  const cambiarModo = (m: "mes" | "ano") => { setModo(m); setOffset(0); };
+
+  const periodoRef = modo === "ano"
+    ? new Date(hoy.getFullYear() + offset, 0, 1)
+    : new Date(hoy.getFullYear(), hoy.getMonth() + offset, 1);
+  const year = periodoRef.getFullYear();
+  const month = periodoRef.getMonth();
+  const pSuffix = modo === "ano" ? "del año" : "del mes";
 
   // Cargar contactadas (esquema versionado; conservamos solo la semana actual,
   // que es lo único que cuenta el scorecard — evita crecimiento sin límite).
@@ -80,32 +90,50 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
     });
   };
 
-  // Un solo pase calcula el mes actual y el previo (para el delta).
+  // Un solo pase calcula el periodo actual y el previo (para el delta, solo en modo mes).
   const { salud, saludPrev } = useMemo(() => {
-    const cur = calcularSalud(citas, gastos, salon.gastosFijos, salon.bolsas, year, month, salon.comisionTarjeta ?? 0, hoy);
+    const com = salon.comisionTarjeta ?? 0;
+    const cur = calcularSalud(citas, gastos, salon.gastosFijos, salon.bolsas, year, month, com, hoy, FACTOR_RIESGO_DEFAULT, modo);
+    if (modo === "ano") return { salud: cur, saludPrev: cur };
     const dPrev = new Date(year, month - 1, 1);
-    const prev = calcularSalud(citas, gastos, salon.gastosFijos, salon.bolsas, dPrev.getFullYear(), dPrev.getMonth(), salon.comisionTarjeta ?? 0, hoy);
+    const prev = calcularSalud(citas, gastos, salon.gastosFijos, salon.bolsas, dPrev.getFullYear(), dPrev.getMonth(), com, hoy, FACTOR_RIESGO_DEFAULT, "mes");
     return { salud: cur, saludPrev: prev };
-  }, [citas, gastos, salon, year, month, hoy]);
+  }, [citas, gastos, salon, year, month, hoy, modo]);
 
+  const esAnio = modo === "ano";
   const g = colorSemaforo(salud.semaforoGlobal);
   const deltaUtilidad = salud.utilidad - saludPrev.utilidad;
   const mesPrevioLabel = MESES[(month + 11) % 12];
+  const periodoLabel = esAnio ? String(year) : MESES[month];
 
   const contactadasCount = salud.clientasEnRiesgo.filter((c) => contactadas[c.clienta] === semanaKey()).length;
 
   return (
     <section className="pb-4">
-      {/* ── Selector de mes ── */}
+      {/* ── Toggle Mes / Año ── */}
+      <div className="flex gap-1 bg-[#EFE6DA] rounded-[12px] p-1 mb-4 max-w-[220px] mx-auto">
+        {([["mes", "Mes"], ["ano", "Año (YTD)"]] as const).map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => cambiarModo(id)}
+            className={`flex-1 py-1.5 text-[12px] font-display font-medium rounded-[9px] transition-all ${modo === id ? "text-white shadow-sm" : "text-text-secondary"}`}
+            style={modo === id ? { backgroundColor: salonColor } : undefined}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Selector de periodo ── */}
       <div className="flex items-center justify-center gap-4 mb-4">
-        <button aria-label="Mes anterior" onClick={() => setOffset(offset - 1)} className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center active:scale-90 transition-transform">
+        <button aria-label={esAnio ? "Año anterior" : "Mes anterior"} onClick={() => setOffset(offset - 1)} className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center active:scale-90 transition-transform">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
-        <span className="text-[13px] font-display font-medium text-text-primary min-w-[120px] text-center">
-          {MESES[month]} {year}
+        <span className="text-[13px] font-display font-medium text-text-primary min-w-[130px] text-center">
+          {esAnio ? `${year}${year === hoy.getFullYear() ? " · al día de hoy" : ""}` : `${MESES[month]} ${year}`}
         </span>
         <button
-          aria-label="Mes siguiente"
+          aria-label={esAnio ? "Año siguiente" : "Mes siguiente"}
           onClick={() => offset < 0 && setOffset(offset + 1)}
           disabled={offset >= 0}
           className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center active:scale-90 transition-transform disabled:opacity-30"
@@ -123,39 +151,43 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: g.fg }} />
           {salud.semaforoGlobal === "verde" ? "Salón sano" : salud.semaforoGlobal === "ambar" ? "Atención" : salud.semaforoGlobal === "rojo" ? "En riesgo" : "Sin datos"}
         </div>
-        <p className="text-[11px] uppercase tracking-[0.08em] text-text-secondary font-display font-medium">Utilidad de {MESES[month]}</p>
+        <p className="text-[11px] uppercase tracking-[0.08em] text-text-secondary font-display font-medium">Utilidad de {periodoLabel}</p>
         <p className="font-numbers text-[44px] leading-none font-bold text-text-primary mt-1">{formatMoney(salud.utilidad)}</p>
-        <p className="text-[13px] font-display font-medium mt-3" style={{ color: deltaUtilidad >= 0 ? "#1F9D55" : "#C0392B" }}>
-          {deltaUtilidad >= 0 ? "▲" : "▼"} {formatMoney(Math.abs(deltaUtilidad))} vs {mesPrevioLabel}
+        <p className="text-[13px] font-display font-medium mt-3" style={{ color: esAnio ? "#6B5D50" : deltaUtilidad >= 0 ? "#1F9D55" : "#C0392B" }}>
+          {esAnio
+            ? `Margen ${salud.margenNeto.valor.toFixed(1)}% en el año`
+            : `${deltaUtilidad >= 0 ? "▲" : "▼"} ${formatMoney(Math.abs(deltaUtilidad))} vs ${mesPrevioLabel}`}
         </p>
       </div>
 
-      {/* ── Resumen del mes (cambia al navegar) ── */}
-      <p className="text-[11px] uppercase tracking-[0.08em] text-text-secondary font-display font-medium mb-3 mt-4">Resumen de {MESES[month]}</p>
+      {/* ── Resumen del periodo (cambia al navegar) ── */}
+      <p className="text-[11px] uppercase tracking-[0.08em] text-text-secondary font-display font-medium mb-3 mt-4">Resumen de {periodoLabel}</p>
       <div className="grid grid-cols-2 gap-3 mb-6">
         <ScoreChip
           valor={formatMoney(salud.ingresosMes)}
-          label="Ingreso del mes"
-          delta={pctDelta(salud.ingresosMes, saludPrev.ingresosMes)}
+          label={`Ingreso ${pSuffix}`}
+          delta={esAnio ? null : pctDelta(salud.ingresosMes, saludPrev.ingresosMes)}
           deltaRef={`vs ${mesPrevioLabel}`}
+          note={esAnio ? "Acumulado del año" : undefined}
         />
         <ScoreChip
           valor={String(salud.visitasMes)}
-          label="Visitas del mes"
-          delta={pctDelta(salud.visitasMes, salud.visitasPromedio3Meses)}
+          label={`Visitas ${pSuffix}`}
+          delta={esAnio ? null : pctDelta(salud.visitasMes, salud.visitasPromedio3Meses)}
           deltaRef="vs prom. 3 meses"
-          note={`Prom. 3 meses: ${salud.visitasPromedio3Meses.toFixed(0)}`}
+          note={esAnio ? "Acumulado del año" : `Prom. 3 meses: ${salud.visitasPromedio3Meses.toFixed(0)}`}
         />
         <ScoreChip
           valor={salud.visitasMes > 0 ? formatMoney(salud.ticketPromedio.valor) : "—"}
           label="Ticket promedio"
-          note={salud.visitasMes === 0 ? "Sin visitas este mes" : salud.ticketPromedio.detalle}
+          note={salud.visitasMes === 0 ? "Sin visitas" : salud.ticketPromedio.detalle}
         />
         <ScoreChip
           valor={formatMoney(salud.gastosTotales)}
-          label="Gasto del mes"
-          delta={pctDelta(salud.gastosTotales, saludPrev.gastosTotales)}
+          label={`Gasto ${pSuffix}`}
+          delta={esAnio ? null : pctDelta(salud.gastosTotales, saludPrev.gastosTotales)}
           deltaRef={`vs ${mesPrevioLabel}`}
+          note={esAnio ? "Acumulado del año" : undefined}
           invertDelta
         />
       </div>
@@ -201,7 +233,7 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
       </div>
 
       {/* ── Días valle (heatmap) ── */}
-      <p className="text-[11px] uppercase tracking-[0.08em] text-text-secondary font-display font-medium mb-3">Días valle · promedio últimas 8 semanas</p>
+      <p className="text-[11px] uppercase tracking-[0.08em] text-text-secondary font-display font-medium mb-3">Días valle · citas promedio por día (8 semanas)</p>
       <div className="bg-surface rounded-card border border-border p-4 mb-6">
         <div className="flex items-end gap-2 h-28">
           {salud.citasPorDia.map((d) => {
@@ -264,16 +296,18 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
               const contactada = contactadas[c.clienta] === semanaKey();
               return (
                 <div key={c.clienta} className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0" style={{ opacity: contactada ? 0.55 : 1 }}>
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-[13px] font-display font-bold" style={{ backgroundColor: salonColor + "1A", color: salonColor }}>
-                    {iniciales(c.clienta)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-display font-semibold text-text-primary truncate">{c.clienta}</p>
-                    <p className="text-[11.5px] text-text-secondary font-display">
-                      Última visita hace {c.diasDesdeUltima} días · suele volver cada {c.frecuenciaPersonal}
-                    </p>
-                  </div>
-                  <span className="text-[13px] font-numbers font-bold text-text-primary mr-1" title="Total gastado contigo">{formatMoney(c.ingresoHistorico)}</span>
+                  <button onClick={() => setClientaDetalle(c)} className="flex items-center gap-3 flex-1 min-w-0 text-left">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-[13px] font-display font-bold" style={{ backgroundColor: salonColor + "1A", color: salonColor }}>
+                      {iniciales(c.clienta)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[14px] font-display font-semibold text-text-primary truncate">{c.clienta}</p>
+                      <p className="text-[11.5px] text-text-secondary font-display">
+                        Última visita hace {c.diasDesdeUltima} días · suele volver cada {c.frecuenciaPersonal}
+                      </p>
+                    </div>
+                    <span className="text-[13px] font-numbers font-bold text-text-primary" title="Total gastado contigo">{formatMoney(c.ingresoHistorico)}</span>
+                  </button>
                   <button
                     onClick={() => toggleContactada(c.clienta)}
                     className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-90"
@@ -325,6 +359,16 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
           onClose={() => setKpiDetalle(null)}
         />
       )}
+
+      {clientaDetalle && (
+        <ClientaDetalleModal
+          clienta={clientaDetalle}
+          citas={citas}
+          comisionTarjeta={salon.comisionTarjeta ?? 0}
+          salonColor={salonColor}
+          onClose={() => setClientaDetalle(null)}
+        />
+      )}
     </section>
   );
 }
@@ -348,6 +392,84 @@ function ScoreChip({ valor, label, delta, deltaRef, deltaText, deltaUp, invertDe
       {txt && <p className="text-[11px] font-display font-bold mt-2" style={{ color: up ? "#1F9D55" : "#C0392B" }}>{txt}</p>}
       {!txt && note && <p className="text-[11px] font-display font-medium text-text-secondary mt-2">{note}</p>}
     </div>
+  );
+}
+
+function ClientaDetalleModal({ clienta, citas, comisionTarjeta, salonColor, onClose }: {
+  clienta: ClientaRiesgo; citas: Cita[]; comisionTarjeta: number; salonColor: string; onClose: () => void;
+}) {
+  // Citas de esta clienta, más recientes primero, agrupadas por año.
+  const suyas = citas
+    .filter((c) => c.clienta === clienta.clienta)
+    .sort((a, b) => b.fecha.getTime() - a.fecha.getTime());
+
+  const porAno = new Map<number, Cita[]>();
+  for (const c of suyas) {
+    const y = c.fecha.getFullYear();
+    const arr = porAno.get(y) || [];
+    arr.push(c);
+    porAno.set(y, arr);
+  }
+  const anios = Array.from(porAno.keys()).sort((a, b) => b - a);
+  const fmtFecha = (d: Date) => d.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+
+  return (
+    <Modal open onClose={onClose}>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-11 h-11 rounded-full flex items-center justify-center text-[15px] font-display font-bold flex-shrink-0" style={{ backgroundColor: salonColor + "1A", color: salonColor }}>
+          {iniciales(clienta.clienta)}
+        </div>
+        <div className="min-w-0">
+          <h3 className="text-[17px] font-display font-bold text-text-primary truncate">{clienta.clienta}</h3>
+          <p className="text-[12px] text-text-secondary font-display">
+            {clienta.visitasTotales} visitas · {formatMoney(clienta.ingresoHistorico)} en total
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        <div className="bg-bg border border-border rounded-[10px] px-3 py-2">
+          <p className="text-[11px] text-text-secondary font-display">Última visita</p>
+          <p className="text-[13px] font-numbers font-semibold text-text-primary">hace {clienta.diasDesdeUltima} días</p>
+        </div>
+        <div className="bg-bg border border-border rounded-[10px] px-3 py-2">
+          <p className="text-[11px] text-text-secondary font-display">Suele volver cada</p>
+          <p className="text-[13px] font-numbers font-semibold text-text-primary">{clienta.frecuenciaPersonal} días</p>
+        </div>
+      </div>
+
+      <p className="text-[10px] uppercase tracking-[0.08em] text-text-secondary font-display font-semibold mb-2">Historial de citas</p>
+      <div className="max-h-[44vh] overflow-y-auto -mx-1 px-1">
+        {anios.map((y) => (
+          <div key={y} className="mb-3">
+            <p className="text-[12px] font-display font-bold text-text-primary mb-1.5">{y}</p>
+            <div className="bg-bg border border-border rounded-[10px] overflow-hidden">
+              {porAno.get(y)!.map((c, i) => {
+                const servicios = c.servicios.length > 0
+                  ? c.servicios.map((s) => s.nombre).filter(Boolean).join(", ")
+                  : "Servicio";
+                return (
+                  <div key={i} className="flex items-start justify-between gap-3 px-3 py-2 border-b border-border last:border-b-0">
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-display text-text-primary leading-tight">{servicios}</p>
+                      <p className="text-[11px] text-text-secondary font-mono mt-0.5">{fmtFecha(c.fecha)} · {c.metodoPago}</p>
+                    </div>
+                    <span className="text-[13px] font-numbers font-semibold text-text-primary flex-shrink-0">{formatMoney(costoNeto(c.costo, c.metodoPago, comisionTarjeta))}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        {suyas.length === 0 && (
+          <p className="text-[13px] text-text-secondary font-display text-center py-4">Sin citas registradas.</p>
+        )}
+      </div>
+
+      <button onClick={onClose} className="w-full mt-4 py-3 rounded-card text-[14px] font-display font-semibold text-white active:scale-[0.98] transition-transform" style={{ backgroundColor: salonColor }}>
+        Cerrar
+      </button>
+    </Modal>
   );
 }
 

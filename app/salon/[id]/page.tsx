@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import type { Salon, Cita, Gasto, GastoAdmin, MovimientoBolsa, ResumenSemanal as ResumenType } from "@/lib/types";
 import { getSalon, getAcumulados, getGastosAdmin, getMovimientosBolsa } from "@/lib/store";
@@ -40,8 +40,16 @@ export default function SalonDashboard() {
     loadSalon();
   }, [loadSalon]);
 
+  // Refrescar al volver el foco solo si pasó tiempo suficiente (evita refetch
+  // en cada cambio de pestaña/app). Sigue tomando cambios de config tras ~2 min.
+  const lastFocusLoad = useRef(Date.now());
   useEffect(() => {
-    const onFocus = () => { loadSalon(); };
+    const onFocus = () => {
+      if (Date.now() - lastFocusLoad.current > 120000) {
+        lastFocusLoad.current = Date.now();
+        loadSalon();
+      }
+    };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [loadSalon]);

@@ -130,17 +130,27 @@ export function calcularSalud(
   month: number,
   comisionTarjeta: number = 0,
   hoy: Date = new Date(),
-  factorRiesgo: number = FACTOR_RIESGO_DEFAULT
+  factorRiesgo: number = FACTOR_RIESGO_DEFAULT,
+  modo: "mes" | "ano" = "mes"
 ): SaludSnapshot {
-  const inicioMes = getInicioMes(year, month);
-  const finMes = getFinMes(year, month);
+  const esAnio = modo === "ano";
+  const esPeriodoActual = esAnio
+    ? year === hoy.getFullYear()
+    : year === hoy.getFullYear() && month === hoy.getMonth();
+  const inicioMes = esAnio ? new Date(year, 0, 1, 0, 0, 0, 0) : getInicioMes(year, month);
+  const finMes = esAnio
+    ? (esPeriodoActual ? hoy : new Date(year, 11, 31, 23, 59, 59, 999))
+    : getFinMes(year, month);
+  // Meses transcurridos en el periodo (para prorratear gastos fijos en YTD)
+  const mesesP = esAnio ? Math.max(1, (finMes.getTime() - inicioMes.getTime()) / (86400000 * 30.4375)) : 1;
+  const pWord = esAnio ? "del año" : "del mes";
 
   const citasMes = enRango(citas, inicioMes, finMes);
   const gastosMes = enRango(gastos, inicioMes, finMes);
 
   // ── Primitivas ──
   const ingresosMes = citasMes.reduce((s, c) => s + costoNeto(c.costo, c.metodoPago, comisionTarjeta), 0);
-  const gfMes = gastosFijosMes(gastosFijos);
+  const gfMes = gastosFijosMes(gastosFijos) * mesesP;
   const gastosVariablesMes = gastosMes.reduce((s, g) => s + g.monto, 0);
   const libreMes = Math.max(0, ingresosMes - gfMes);
   const sueldoOperativo = libreMes * pctGastoOperativo(bolsas);
@@ -156,7 +166,7 @@ export function calcularSalud(
     explicacion: "De cada $100 que entran, cuánto te queda como utilidad después de todos los gastos y los sueldos de las dueñas.",
     formula: "(Ingresos − gastos fijos − gastos variables − sueldo dueñas) ÷ Ingresos",
     desglose: [
-      { label: "Ingresos del mes", valor: formatMoney(ingresosMes) },
+      { label: `Ingresos ${pWord}`, valor: formatMoney(ingresosMes) },
       { label: "− Gastos fijos", valor: formatMoney(gfMes) },
       { label: "− Gastos variables", valor: formatMoney(gastosVariablesMes) },
       { label: "− Sueldo dueñas (bolsas op.)", valor: formatMoney(sueldoOperativo) },
@@ -167,7 +177,7 @@ export function calcularSalud(
 
   // ── KPI 2 · Costo de personal ──
   const nominaGastos =
-    gastosFijosCategoria(gastosFijos, "nomina") +
+    gastosFijosCategoria(gastosFijos, "nomina") * mesesP +
     gastosMes.filter((g) => g.categoria === "nomina").reduce((s, g) => s + g.monto, 0);
   const nomina = nominaGastos + sueldoOperativo;
   const costoPersonalPct = ingresosMes > 0 ? (nomina / ingresosMes) * 100 : 0;
@@ -182,7 +192,7 @@ export function calcularSalud(
       { label: "Nómina (gastos categoría nómina)", valor: formatMoney(nominaGastos) },
       { label: "+ Sueldo dueñas (bolsas op.)", valor: formatMoney(sueldoOperativo) },
       { label: "= Total personal", valor: formatMoney(nomina) },
-      { label: "÷ Ingresos del mes", valor: formatMoney(ingresosMes) },
+      { label: `÷ Ingresos ${pWord}`, valor: formatMoney(ingresosMes) },
       { label: "= Costo de personal", valor: pctStr(costoPersonalPct) },
     ],
   };
@@ -198,10 +208,10 @@ export function calcularSalud(
     explicacion: "Cuánto necesitas vender al mes solo para no perder. Arriba de eso, empiezas a ganar.",
     formula: "Punto de equilibrio = gastos fijos + sueldo dueñas",
     desglose: [
-      { label: "Gastos fijos del mes", valor: formatMoney(gfMes) },
+      { label: `Gastos fijos ${pWord}`, valor: formatMoney(gfMes) },
       { label: "+ Sueldo dueñas (bolsas op.)", valor: formatMoney(sueldoOperativo) },
       { label: "= Punto de equilibrio", valor: formatMoney(peMonto) },
-      { label: "Ventas del mes", valor: formatMoney(ingresosMes) },
+      { label: `Ventas ${pWord}`, valor: formatMoney(ingresosMes) },
       { label: "Cobertura", valor: `${cobertura.toFixed(2)}×` },
       faltaParaPE > 0
         ? { label: "Falta para cubrir el PE", valor: formatMoney(faltaParaPE) }
@@ -211,7 +221,7 @@ export function calcularSalud(
 
   // ── KPI 4 · Renta % ──
   const renta =
-    gastosFijosCategoria(gastosFijos, "renta") +
+    gastosFijosCategoria(gastosFijos, "renta") * mesesP +
     gastosMes.filter((g) => g.categoria === "renta").reduce((s, g) => s + g.monto, 0);
   const rentaPctVal = ingresosMes > 0 ? (renta / ingresosMes) * 100 : 0;
   const rentaPct: KpiResultado = {
@@ -222,8 +232,8 @@ export function calcularSalud(
     explicacion: "Qué porcentaje de tus ventas se va en pagar la renta del local. Si pasa del 18%, el local te queda grande o las ventas chicas.",
     formula: "Renta ÷ Ingresos",
     desglose: [
-      { label: "Renta del mes (gastos categoría renta)", valor: formatMoney(renta) },
-      { label: "÷ Ingresos del mes", valor: formatMoney(ingresosMes) },
+      { label: `Renta ${pWord} (categoría renta)`, valor: formatMoney(renta) },
+      { label: `÷ Ingresos ${pWord}`, valor: formatMoney(ingresosMes) },
       { label: "= Renta sobre ingreso", valor: pctStr(rentaPctVal) },
     ],
   };
@@ -234,16 +244,19 @@ export function calcularSalud(
   // Promedio de ticket y de visitas de los 3 meses anteriores
   const ticketsPrevios: number[] = [];
   const visitasPrevias: number[] = [];
-  for (let i = 1; i <= 3; i++) {
-    const d = new Date(year, month - i, 1);
-    const ini = getInicioMes(d.getFullYear(), d.getMonth());
-    const fin = getFinMes(d.getFullYear(), d.getMonth());
-    const cm = enRango(citas, ini, fin);
-    const v = agruparVisitas(cm, comisionTarjeta);
-    visitasPrevias.push(v.length);
-    if (v.length > 0) {
-      const ing = cm.reduce((s, c) => s + costoNeto(c.costo, c.metodoPago, comisionTarjeta), 0);
-      ticketsPrevios.push(ing / v.length);
+  // La comparación contra los 3 meses anteriores solo aplica en vista mensual.
+  if (!esAnio) {
+    for (let i = 1; i <= 3; i++) {
+      const d = new Date(year, month - i, 1);
+      const ini = getInicioMes(d.getFullYear(), d.getMonth());
+      const fin = getFinMes(d.getFullYear(), d.getMonth());
+      const cm = enRango(citas, ini, fin);
+      const v = agruparVisitas(cm, comisionTarjeta);
+      visitasPrevias.push(v.length);
+      if (v.length > 0) {
+        const ing = cm.reduce((s, c) => s + costoNeto(c.costo, c.metodoPago, comisionTarjeta), 0);
+        ticketsPrevios.push(ing / v.length);
+      }
     }
   }
   const ticketProm3 = ticketsPrevios.length > 0 ? ticketsPrevios.reduce((a, b) => a + b, 0) / ticketsPrevios.length : 0;
@@ -257,7 +270,13 @@ export function calcularSalud(
         : ticketProm3 > 0 && ticket < ticketProm3 * 0.92
         ? "rojo"
         : "verde",
-    detalle: muestraChica ? "Muestra chica" : ticketProm3 > 0 ? `vs prom. ${Math.round(ticketProm3)}` : "Sin histórico",
+    detalle: esAnio
+      ? "Promedio del año"
+      : muestraChica
+      ? "Muestra chica"
+      : ticketProm3 > 0
+      ? `vs prom. ${Math.round(ticketProm3)}`
+      : "Sin histórico",
   };
 
   // ── KPI 6a · Citas por día de la semana (últimas 8 semanas) ──
@@ -315,7 +334,7 @@ export function calcularSalud(
   const retencionPct = cohorte > 0 ? (retenidos / cohorte) * 100 : 0;
   // "En curso": el mes analizado está dentro de los últimos 3 meses
   const mesesDesde = (hoy.getFullYear() - year) * 12 + (hoy.getMonth() - month);
-  const enCurso = mesesDesde < 3;
+  const enCurso = !esAnio && mesesDesde < 3;
   const retencion90: KpiResultado = {
     valor: retencionPct,
     semaforo:
@@ -324,7 +343,7 @@ export function calcularSalud(
     explicacion: "De las clientas nuevas de este mes, cuántas regresaron al menos una vez en los siguientes 90 días.",
     formula: "Clientas nuevas que volvieron en 90 días ÷ Clientas nuevas del mes",
     desglose: [
-      { label: "Clientas nuevas del mes", valor: String(cohorte) },
+      { label: `Clientas nuevas ${pWord}`, valor: String(cohorte) },
       { label: "De ellas, volvieron en 90 días", valor: String(retenidos) },
       { label: "= Retención", valor: cohorte === 0 ? "—" : pctStr(retencionPct) },
       ...(enCurso ? [{ label: "Estado", valor: "En curso (mes reciente)" }] : []),
@@ -347,7 +366,7 @@ export function calcularSalud(
     formula: "Ingreso de clientas que ya existían ÷ Ingreso total del mes",
     desglose: [
       { label: "Ingreso de clientas recurrentes", valor: formatMoney(ingresoRecurrenteMonto) },
-      { label: "÷ Ingreso total del mes", valor: formatMoney(ingresosMes) },
+      { label: `÷ Ingreso total ${pWord}`, valor: formatMoney(ingresosMes) },
       { label: "= Ingreso recurrente", valor: pctStr(recurrentePct) },
     ],
   };

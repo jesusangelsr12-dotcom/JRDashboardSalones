@@ -57,7 +57,7 @@ describe("SaludSection — render + interacciones", () => {
     expect(screen.getByText("Renta / ingreso")).toBeInTheDocument();
     expect(screen.getByText("Retención 90 días")).toBeInTheDocument();
     expect(screen.getByText("Punto de equilibrio")).toBeInTheDocument();
-    expect(screen.getByText("Días valle · promedio últimas 8 semanas")).toBeInTheDocument();
+    expect(screen.getByText("Días valle · citas promedio por día (8 semanas)")).toBeInTheDocument();
   });
 
   it("el botón 'Mes siguiente' está deshabilitado en el mes actual y 'Mes anterior' navega", () => {
@@ -91,6 +91,23 @@ describe("SaludSection — render + interacciones", () => {
     expect(screen.getByText("Ingresos del mes")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Entendido"));
     expect(screen.queryByText("Fórmula")).not.toBeInTheDocument();
+  });
+
+  it("cambia a vista Año (YTD) y muestra el resumen del año", () => {
+    render(<SaludSection salon={salon} citas={citas} gastos={[]} salonColor={salon.color} />);
+    fireEvent.click(screen.getByText("Año (YTD)"));
+    const hoy = new Date();
+    expect(screen.getByText(`Utilidad de ${hoy.getFullYear()}`)).toBeInTheDocument();
+    expect(screen.getByText(`Resumen de ${hoy.getFullYear()}`)).toBeInTheDocument();
+    expect(screen.getByText("Ingreso del año")).toBeInTheDocument();
+  });
+
+  it("al tocar una clienta en riesgo muestra su historial de citas", () => {
+    render(<SaludSection salon={salon} citas={citas} gastos={[]} salonColor={salon.color} />);
+    fireEvent.click(screen.getByText("Maria Lopez"));
+    expect(screen.getByText("Historial de citas")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Cerrar"));
+    expect(screen.queryByText("Historial de citas")).not.toBeInTheDocument();
   });
 
   it("expande el Estado de Resultados detallado", () => {

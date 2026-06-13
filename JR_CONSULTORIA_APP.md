@@ -432,6 +432,13 @@ Gastos fijos prorrateados a mes con ×4 (consistente con EstadoResultados).
 
 **Descartado:** Fase 3 (estilista_id, KPI 6b por estilista, jugada de precios).
 
+**Vistas y detalle (iteración UX):**
+- `calcularSalud(..., modo)` con `modo: "mes" | "ano"`. En YTD prorratea gastos fijos por meses transcurridos y abre la ventana Ene 1 → hoy.
+- Toggle Mes / Año (YTD) en SaludSection; navegación por mes o por año.
+- KPIs de rentabilidad y clientas son clicables → modal con explicación, fórmula y desglose con números reales (`KpiResultado.explicacion/formula/desglose`).
+- Clienta en riesgo clicable → modal con historial de citas por año (fecha, servicio, monto).
+- Refetch en focus de la página del salón con throttle (120s) para no refrescar en cada cambio de app.
+
 ---
 
 ## 12. Rediseño visual app-wide (estilo Coinbase · paleta JR)
