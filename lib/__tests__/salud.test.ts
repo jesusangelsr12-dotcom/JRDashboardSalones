@@ -96,6 +96,20 @@ describe("calcularSalud — ejemplo del documento de trazabilidad", () => {
   });
 });
 
+describe("calcularSalud — scorecard sin desbordar a fin de mes", () => {
+  it("gasto de meses previos no incluye días del mes siguiente (día 31 sobre mes de 30)", () => {
+    const hoy = new Date(2026, 4, 31, 12, 0, 0); // 31 de mayo (diaDelMes = 31)
+    const gastos: Gasto[] = [
+      { fecha: new Date(2026, 3, 15), timestamp: "", descripcion: "", monto: 100, metodoPago: "Efectivo", source: "sheets" },
+      { fecha: new Date(2026, 3, 30), timestamp: "", descripcion: "", monto: 200, metodoPago: "Efectivo", source: "sheets" },
+      { fecha: new Date(2026, 4, 1), timestamp: "", descripcion: "", monto: 999, metodoPago: "Efectivo", source: "sheets" }, // mayo 1: NO debe contar para abril
+    ];
+    const salud = calcularSalud([], gastos, gastosFijos, bolsas, 2026, 4, 0, hoy);
+    // Abril acumula 100+200 = 300; Mar y Feb = 0 → promedio = 100. El $999 de mayo queda fuera.
+    expect(salud.scorecard.gastoPromedioMesesPrevios).toBeCloseTo(100);
+  });
+});
+
 describe("calcularSalud — clientas en riesgo", () => {
   it("detecta clienta cuya última visita supera 1.5× su frecuencia", () => {
     const hoy = new Date(2026, 4, 31, 12, 0, 0);

@@ -2,14 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { Bolsa, MetodoPago, CategoriaGasto } from "@/lib/types";
-
-const CATEGORIAS: { value: CategoriaGasto; label: string }[] = [
-  { value: "otros", label: "Otros" },
-  { value: "nomina", label: "Nómina" },
-  { value: "renta", label: "Renta" },
-  { value: "insumos", label: "Insumos" },
-  { value: "servicios", label: "Servicios" },
-];
+import { CATEGORIAS_GASTO } from "@/lib/constants";
 import { addGastoAdmin } from "@/lib/store";
 import Modal from "@/components/ui/Modal";
 
@@ -152,7 +145,7 @@ export default function GastoAdminModal({
             onChange={(e) => setCategoria(e.target.value as CategoriaGasto)}
             className="w-full bg-bg border border-border rounded-[8px] px-3 py-2.5 text-[14px] font-display text-text-primary outline-none focus:border-text-secondary transition-colors"
           >
-            {CATEGORIAS.map((c) => (
+            {CATEGORIAS_GASTO.map((c) => (
               <option key={c.value} value={c.value}>{c.label}</option>
             ))}
           </select>

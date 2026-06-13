@@ -9,8 +9,8 @@ import {
   colorSemaforo,
   DOW_LABELS,
   DOW_LABELS_LARGO,
+  PE_COBERTURA_VERDE,
   type KpiResultado,
-  type Semaforo,
 } from "@/lib/salud";
 import EstadoResultados from "./EstadoResultados";
 
@@ -30,23 +30,40 @@ function semanaKey(d = new Date()): string {
   return `${d.getFullYear()}-W${week}`;
 }
 
+const CONTACTADAS_VERSION = 1;
+
 export default function SaludSection({ salon, citas, gastos, salonColor }: SaludSectionProps) {
-  const hoy = useMemo(() => new Date(), []);
+  // "Hoy" se refresca al recuperar foco (igual que el refetch de datos), para
+  // que los KPIs por día no queden corridos si la app queda abierta tras la medianoche.
+  const [hoy, setHoy] = useState(() => new Date());
   const [offset, setOffset] = useState(0); // 0 = mes actual, -1 = mes anterior...
   const [showDetalle, setShowDetalle] = useState(false);
   const [showRiesgo, setShowRiesgo] = useState(true);
   const [contactadas, setContactadas] = useState<Record<string, string>>({});
 
+  useEffect(() => {
+    const refresh = () => setHoy(new Date());
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
+  }, []);
+
   const ref = new Date(hoy.getFullYear(), hoy.getMonth() + offset, 1);
   const year = ref.getFullYear();
   const month = ref.getMonth();
 
-  // Cargar/guardar contactadas en localStorage
+  // Cargar contactadas (esquema versionado; conservamos solo la semana actual,
+  // que es lo único que cuenta el scorecard — evita crecimiento sin límite).
   const lsKey = `jr_contactadas_${salon.id}`;
   useEffect(() => {
     try {
       const raw = localStorage.getItem(lsKey);
-      if (raw) setContactadas(JSON.parse(raw));
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const data: Record<string, string> = parsed?.v === CONTACTADAS_VERSION && parsed.data ? parsed.data : {};
+      const wk = semanaKey();
+      const pruned: Record<string, string> = {};
+      for (const [k, v] of Object.entries(data)) if (v === wk) pruned[k] = v;
+      setContactadas(pruned);
     } catch { /* noop */ }
   }, [lsKey]);
 
@@ -56,18 +73,17 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
       const next = { ...prev };
       if (next[nombre] === wk) delete next[nombre];
       else next[nombre] = wk;
-      try { localStorage.setItem(lsKey, JSON.stringify(next)); } catch { /* noop */ }
+      try { localStorage.setItem(lsKey, JSON.stringify({ v: CONTACTADAS_VERSION, data: next })); } catch { /* noop */ }
       return next;
     });
   };
 
-  const salud = useMemo(
-    () => calcularSalud(citas, gastos, salon.gastosFijos, salon.bolsas, year, month, salon.comisionTarjeta ?? 0, hoy),
-    [citas, gastos, salon, year, month, hoy]
-  );
-  const saludPrev = useMemo(() => {
-    const d = new Date(year, month - 1, 1);
-    return calcularSalud(citas, gastos, salon.gastosFijos, salon.bolsas, d.getFullYear(), d.getMonth(), salon.comisionTarjeta ?? 0, hoy);
+  // Un solo pase calcula el mes actual y el previo (para el delta).
+  const { salud, saludPrev } = useMemo(() => {
+    const cur = calcularSalud(citas, gastos, salon.gastosFijos, salon.bolsas, year, month, salon.comisionTarjeta ?? 0, hoy);
+    const dPrev = new Date(year, month - 1, 1);
+    const prev = calcularSalud(citas, gastos, salon.gastosFijos, salon.bolsas, dPrev.getFullYear(), dPrev.getMonth(), salon.comisionTarjeta ?? 0, hoy);
+    return { salud: cur, saludPrev: prev };
   }, [citas, gastos, salon, year, month, hoy]);
 
   const g = colorSemaforo(salud.semaforoGlobal);
@@ -155,7 +171,7 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
         <div className="h-3 bg-bg rounded-full overflow-hidden relative">
           <div
             className="h-full rounded-full transition-all duration-700"
-            style={{ width: `${Math.min(100, salud.puntoEquilibrio.valor * 76.9)}%`, backgroundColor: colorSemaforo(salud.puntoEquilibrio.semaforo).fg }}
+            style={{ width: `${Math.min(100, (salud.puntoEquilibrio.valor / PE_COBERTURA_VERDE) * 100)}%`, backgroundColor: colorSemaforo(salud.puntoEquilibrio.semaforo).fg }}
           />
         </div>
         <div className="flex justify-between mt-2.5 text-[11.5px] font-mono text-text-secondary">
@@ -325,7 +341,7 @@ function KpiRow({ icon, nombre, kpi, formato }: { icon: string; nombre: string; 
 
 // ── utils ──
 function pctDelta(actual: number, base: number): number | null {
-  if (!base || base === 0) return null;
+  if (!base) return null;
   return ((actual - base) / base) * 100;
 }
 function iniciales(nombre: string): string {

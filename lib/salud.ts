@@ -8,11 +8,14 @@
 // ════════════════════════════════════════════════════════════════
 
 import type { Cita, Gasto, GastoFijo, Bolsa, CategoriaGasto } from "./types";
-import { costoNeto, getInicioMes, getFinMes, getLunesDeSemana, getDomingoDeSemana } from "./calculations";
+import { costoNeto, getInicioMes, getFinMes, getLunesDeSemana, getDomingoDeSemana, enRango } from "./calculations";
 
 export type Semaforo = "verde" | "ambar" | "rojo" | "gris";
 
 export const FACTOR_RIESGO_DEFAULT = 1.5;
+// Cobertura de ventas sobre el punto de equilibrio para considerarlo "sano".
+// La barra de progreso del PE se llena al 100% en este múltiplo.
+export const PE_COBERTURA_VERDE = 1.3;
 
 export interface KpiResultado {
   valor: number;
@@ -68,10 +71,6 @@ export interface SaludSnapshot {
 }
 
 // ── Helpers ──
-
-function enRango<T extends { fecha: Date }>(items: T[], inicio: Date, fin: Date): T[] {
-  return items.filter((i) => i.fecha >= inicio && i.fecha <= fin);
-}
 
 function mediana(nums: number[]): number {
   if (nums.length === 0) return 0;
@@ -177,8 +176,8 @@ export function calcularSalud(
   const cobertura = peMonto > 0 ? ingresosMes / peMonto : 0;
   const puntoEquilibrio: KpiResultado = {
     valor: cobertura,
-    semaforo: peMonto === 0 ? "gris" : cobertura >= 1.3 ? "verde" : cobertura < 1 ? "rojo" : "ambar",
-    detalle: "Ventas ≥ 1.3× PE",
+    semaforo: peMonto === 0 ? "gris" : cobertura >= PE_COBERTURA_VERDE ? "verde" : cobertura < 1 ? "rojo" : "ambar",
+    detalle: `Ventas ≥ ${PE_COBERTURA_VERDE}× PE`,
   };
 
   // ── KPI 4 · Renta % ──
@@ -370,8 +369,12 @@ export function calcularSalud(
   for (let i = 1; i <= 3; i++) {
     const d = new Date(year, month - i, 1);
     const ini = getInicioMes(d.getFullYear(), d.getMonth());
-    const finAltura = new Date(d.getFullYear(), d.getMonth(), diaDelMes, 23, 59, 59, 999);
-    const acum = enRango(gastos, ini, finAltura).reduce((s, g) => s + g.monto, 0);
+    const finMesPrevio = getFinMes(d.getFullYear(), d.getMonth());
+    // "Misma altura del mes": acumular hasta el mismo día, sin desbordar a meses
+    // cortos (ej. día 31 sobre un mes de 30 días rodaría al mes siguiente).
+    const acum = enRango(gastos, ini, finMesPrevio)
+      .filter((g) => g.fecha.getDate() <= diaDelMes)
+      .reduce((s, g) => s + g.monto, 0);
     gastosPrevios.push(acum);
   }
   const gastoPromedioMesesPrevios = gastosPrevios.length > 0 ? gastosPrevios.reduce((a, b) => a + b, 0) / gastosPrevios.length : 0;

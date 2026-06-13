@@ -51,7 +51,7 @@ export function getFinMes(year: number, month: number): Date {
 }
 
 /** Filtra items por rango de fechas */
-function enRango<T extends { fecha: Date }>(
+export function enRango<T extends { fecha: Date }>(
   items: T[],
   inicio: Date,
   fin: Date
