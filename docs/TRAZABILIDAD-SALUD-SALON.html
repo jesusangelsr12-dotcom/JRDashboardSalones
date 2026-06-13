@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trazabilidad de datos y fórmulas — Salud del Salón (Fase 1 + 2)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F8F3ED; --surface:#FFFFFF; --ink:#1A1410; --ink-2:#6B5D50; --ink-3:#A89A8B;
+    --line:#ECE3D8; --brand:#7B4F2E; --gold:#C8963C;
+    --good:#1F9D55; --good-bg:#E7F4EC; --warn:#C57B14; --warn-bg:#FBF0DC; --bad:#C0392B; --bad-bg:#FBEAE7;
+    --code-bg:#2A2018;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:'Inter',-apple-system,system-ui,sans-serif; background:var(--bg); color:var(--ink); line-height:1.6; font-size:15px;}
+  .header{background:linear-gradient(135deg,var(--brand),#5C3A20); color:#fff; padding:40px 28px;}
+  .header .overline{font-size:12px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; opacity:0.8;}
+  .header h1{font-size:30px; font-weight:800; letter-spacing:-0.02em; margin-top:6px;}
+  .header p{font-size:14px; opacity:0.92; margin-top:10px; max-width:760px;}
+  .wrap{max-width:1080px; margin:0 auto; padding:0 28px 80px;}
+  .section{margin-top:48px;}
+  h2{font-size:23px; font-weight:800; letter-spacing:-0.02em; color:var(--brand); margin-bottom:6px; padding-top:8px;}
+  h2 .n{display:inline-flex; width:32px; height:32px; border-radius:9px; background:var(--brand); color:#fff;
+        align-items:center; justify-content:center; font-size:15px; margin-right:10px; vertical-align:middle;}
+  h3{font-size:18px; font-weight:700; margin:28px 0 10px; letter-spacing:-0.01em;}
+  .lead{color:var(--ink-2); max-width:820px; margin-bottom:10px;}
+  p{max-width:840px;}
+
+  table{width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--line);
+        border-radius:14px; overflow:hidden; margin:16px 0; font-size:13.5px;}
+  th{background:var(--brand); color:#fff; font-weight:700; text-align:left; padding:12px 14px; font-size:12.5px;}
+  td{padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top;}
+  tr:last-child td{border-bottom:none;}
+  tr:nth-child(even) td{background:#FBF7F1;}
+  code{font-family:'SF Mono',Consolas,monospace; font-size:12.5px; background:#F0E7DA; color:var(--brand);
+       padding:1px 6px; border-radius:5px; font-weight:600;}
+  .formula{font-family:'SF Mono',Consolas,monospace; font-size:13px; background:var(--code-bg); color:#F0E0C8;
+           padding:14px 16px; border-radius:10px; margin:12px 0; line-height:1.7; overflow-x:auto; white-space:pre;}
+  .formula .c{color:#9FE0B0;} .formula .k{color:#E0B070;}
+
+  .badge{display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap;}
+  .badge.good{background:var(--good-bg); color:var(--good);}
+  .badge.warn{background:var(--warn-bg); color:var(--warn);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad);}
+  .badge.src{background:#EDE3F0; color:#6B4E8E;}
+  .badge.f1{background:#E7F4EC; color:var(--good);}
+  .badge.f2{background:var(--warn-bg); color:var(--warn);}
+
+  .callout{border-radius:14px; padding:18px 20px; margin:20px 0; border:1px solid;}
+  .callout.key{background:#FBF0DC; border-color:#EAD2A3;}
+  .callout.good{background:var(--good-bg); border-color:#BCE3C9;}
+  .callout.bad{background:var(--bad-bg); border-color:#F0C9C2;}
+  .callout h4{font-size:15px; font-weight:800; margin-bottom:6px;}
+  .callout.key h4{color:var(--warn);} .callout.good h4{color:var(--good);} .callout.bad h4{color:var(--bad);}
+
+  .kpi-block{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:22px; margin:16px 0;}
+  .kpi-block .kt{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px;}
+  .kpi-block h3{margin:0; font-size:17px;}
+  .meta-grid{display:grid; grid-template-columns:130px 1fr; gap:6px 16px; margin-top:14px; font-size:13.5px;}
+  .meta-grid .lbl{font-weight:700; color:var(--ink-3); font-size:12px; text-transform:uppercase; letter-spacing:0.04em; padding-top:2px;}
+
+  .example{background:#FBF7F1; border:1px dashed #D9C9B5; border-radius:12px; padding:18px; margin:16px 0;}
+  .example .step{display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px dashed #E5D7C5; font-size:14px;}
+  .example .step:last-child{border-bottom:none; font-weight:800; font-size:15px;}
+  .example .step .v{font-family:'SF Mono',Consolas,monospace; font-weight:700;}
+  .pos{color:var(--good);} .neg{color:var(--bad);}
+  .footer{color:var(--ink-3); font-size:12.5px; padding:30px 28px; max-width:1080px; margin:0 auto; border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="overline">JR Dashboard Salones · Documento de trazabilidad</div>
+  <h1>De dónde sale cada dato y cómo se calcula cada fórmula</h1>
+  <p>Módulo <strong>Salud del Salón</strong> — Fase 1 (datos actuales) y Fase 2 (categorización de gastos). Fase 3 (estilistas) descartada. Cada KPI documenta: <strong>origen del dato</strong> (campo → tabla/hoja real del proyecto), <strong>fórmula exacta</strong> y <strong>tratamiento de las bolsas de sueldos</strong>. Antes de codificar, este documento es el acuerdo de los números.</p>
+</div>
+
+<div class="wrap">
+
+<!-- ─────────── 0 · LA DECISIÓN CLAVE: BOLSAS DE SUELDOS ─────────── -->
+<div class="section">
+  <h2><span class="n">0</span>La decisión clave: ¿el sueldo de las dueñas es gasto?</h2>
+  <p class="lead">Tu pregunta. La respuesta correcta es la que hace que el semáforo del salón no mienta. Aquí está mi recomendación con el porqué.</p>
+
+  <div class="callout key">
+    <h4>El principio</h4>
+    <p>Las <strong>bolsas son un mecanismo de reparto de caja</strong> — contestan "¿a dónde va físicamente el dinero?", <strong>no</strong> "¿es gasto o es utilidad?". Que una bolsa reciba dinero no la convierte en gasto. Lo que decide si algo es gasto es su <strong>naturaleza económica</strong>.</p>
+  </div>
+
+  <p>Por eso <strong>no hay que mover nada a "gastos fijos"</strong> (eso rompería el reparto de <code>libre</code> que ya funciona). En su lugar, cada bolsa lleva una etiqueta de <strong>naturaleza</strong>, y la capa de Salud la usa:</p>
+
+  <table>
+    <tr><th style="width:22%">Naturaleza de la bolsa</th><th style="width:33%">Qué es</th><th style="width:20%">¿Cuenta como gasto en Salud?</th><th>Ejemplo tuyo</th></tr>
+    <tr><td><strong>Gasto operativo</strong></td><td>Pago por trabajo real que sostiene al salón. Si la dueña no lo hiciera, pagarías a alguien.</td><td><span class="badge bad">SÍ — es nómina</span></td><td>Sueldo de las dueñas pagado semana a semana</td></tr>
+    <tr><td><strong>Reserva / ahorro</strong></td><td>Utilidad que el salón YA ganó y está apartando para después.</td><td><span class="badge good">NO — es utilidad retenida</span></td><td>Bonos pagados a futuro, fondo de imprevistos</td></tr>
+    <tr><td><strong>Reparto de utilidad</strong></td><td>Lo que las dueñas sacan como retorno por ser dueñas, una vez que el salón ya fue rentable.</td><td><span class="badge good">NO — es dividendo</span></td><td>Reparto final de "lo que sobró"</td></tr>
+  </table>
+
+  <div class="callout bad">
+    <h4>Por qué importa (el riesgo de no hacerlo)</h4>
+    <p>Si el sueldo de las dueñas <strong>no</strong> se cuenta como gasto, el margen neto (KPI 1) y el semáforo saldrían <strong>verdes artificialmente</strong>: el salón parecería sano aunque en realidad no esté cubriendo el costo real del trabajo de las dueñas. Y si contáramos <strong>todas</strong> las bolsas como gasto (incluyendo ahorro y reparto), el margen saldría casi en cero siempre — porque por diseño <code>libre</code> se reparte completo a bolsas. Ninguno de los dos extremos dice la verdad.</p>
+  </div>
+
+  <div class="callout good">
+    <h4>Mi recomendación concreta</h4>
+    <p><strong>1.</strong> El sueldo de las dueñas pagado semana a semana → etiqueta <code>gasto_operativo</code> → <strong>sí cuenta como gasto/nómina</strong> en la capa de Salud (KPI 1, 2 y semáforo).<br>
+    <strong>2.</strong> Bonos a futuro y ahorros → etiqueta <code>reserva</code> → <strong>no son gasto</strong>, son utilidad apartada.<br>
+    <strong>3.</strong> No se toca el reparto de <code>libre</code> a bolsas (el mecanismo de caja queda igual). Solo se agrega una etiqueta por bolsa en la configuración del salón.</p>
+  </div>
+
+  <h3>Ejemplo numérico con tus conceptos</h3>
+  <p>Una semana con $40,000 de ingresos. Gastos fijos $12,000 (renta + servicios). <code>libre = $28,000</code>, repartido: 50% sueldo dueñas, 20% reserva/bonos, 30% reparto. Además hubo $3,000 de gastos variables (insumos del Sheet).</p>
+  <div class="example">
+    <div class="step"><span>Ingresos netos (citas, ya con comisión tarjeta)</span><span class="v pos">$40,000</span></div>
+    <div class="step"><span>− Gastos fijos (renta, servicios)</span><span class="v neg">− $12,000</span></div>
+    <div class="step"><span>− Gastos variables (insumos del Sheet)</span><span class="v neg">− $3,000</span></div>
+    <div class="step"><span>− Bolsa "Sueldo dueñas" <span class="badge bad">gasto_operativo</span> (50% de $28,000)</span><span class="v neg">− $14,000</span></div>
+    <div class="step"><span>Bolsa "Bonos a futuro" <span class="badge good">reserva</span> — NO resta</span><span class="v">$0 al margen</span></div>
+    <div class="step"><span>Bolsa "Reparto" <span class="badge good">reparto</span> — NO resta</span><span class="v">$0 al margen</span></div>
+    <div class="step"><span>= Utilidad real del salón</span><span class="v pos">$11,000 · margen 27.5%</span></div>
+  </div>
+  <p style="font-size:13.5px; color:var(--ink-2);">Los $5,600 de reserva + $8,400 de reparto (el resto de <code>libre</code>) <strong>no desaparecen</strong>: son la utilidad de $11,000 que el salón decidió apartar y repartir. El número cuadra y el semáforo dice la verdad.</p>
+</div>
+
+<!-- ─────────── 1 · FUENTES DE DATOS ─────────── -->
+<div class="section">
+  <h2><span class="n">1</span>Fuentes de datos (de dónde sale todo)</h2>
+  <p class="lead">Hay dos orígenes: el <strong>Google Sheet</strong> de cada salón (citas y gastos del día a día) y <strong>Supabase</strong> (configuración y movimientos gestionados desde la app). Verificado contra <code>lib/sheets.ts</code>, <code>lib/calculations.ts</code> y el schema.</p>
+  <table>
+    <tr><th style="width:18%">Dato</th><th style="width:22%">Origen</th><th style="width:30%">Campos reales</th><th>Notas</th></tr>
+    <tr><td><strong>Citas (ingresos)</strong></td><td><span class="badge src">Google Sheet</span> hoja <code>citas</code></td><td><code>fecha</code>, <code>clienta</code>, <code>servicio</code> (JSON), <code>costo</code>, <code>metodo_pago</code></td><td>Se filtran <code>costo &gt; 0</code>. <code>servicio</code> trae líneas tipo servicio/producto.</td></tr>
+    <tr><td><strong>Gastos variables</strong></td><td><span class="badge src">Google Sheet</span> hoja <code>gastos</code></td><td><code>fecha</code>, <code>descripcion</code>, <code>monto</code>, <code>metodo_pago</code></td><td><strong>Decisión tuya:</strong> todo gasto del Sheet = variable. No llevan categoría.</td></tr>
+    <tr><td><strong>Gastos fijos</strong></td><td><span class="badge src">Supabase</span> <code>gastos_fijos</code></td><td><code>nombre</code>, <code>monto</code>, <code>frecuencia</code> + <code>categoria</code> 🆕</td><td>Editables en la app. <strong>Fase 2:</strong> se agrega <code>categoria</code>.</td></tr>
+    <tr><td><strong>Gastos admin</strong></td><td><span class="badge src">Supabase</span> (GastoAdmin)</td><td><code>descripcion</code>, <code>monto</code>, <code>metodoPago</code>, <code>bolsaId</code> + <code>categoria</code> 🆕</td><td><strong>Fase 2:</strong> se agrega <code>categoria</code>.</td></tr>
+    <tr><td><strong>Bolsas</strong></td><td><span class="badge src">Supabase</span> <code>bolsas</code></td><td><code>nombre</code>, <code>porcentaje</code>, <code>acumulado</code>, <code>tipo</code> + <code>naturaleza</code> 🆕</td><td><strong>Fase 2:</strong> se agrega <code>naturaleza</code> (gasto_operativo / reserva / reparto).</td></tr>
+    <tr><td><strong>Comisión tarjeta</strong></td><td><span class="badge src">Supabase</span> <code>salones</code></td><td><code>comision_tarjeta</code> (%)</td><td>Se aplica con <code>costoNeto()</code> a pagos con tarjeta.</td></tr>
+    <tr><td><strong>Cierres semanales</strong></td><td><span class="badge src">Supabase</span> <code>cierres</code></td><td><code>semana_inicio</code>, <code>ingresos</code>, <code>gastos</code>, <code>libre</code></td><td>Histórico de reparto por semana.</td></tr>
+  </table>
+
+  <h3>Definiciones base (una sola vez, usadas por varios KPIs)</h3>
+  <table>
+    <tr><th style="width:24%">Concepto</th><th>Definición y origen</th></tr>
+    <tr><td><strong>Ingreso neto</strong></td><td><code>costoNeto(costo, metodo_pago, comision_tarjeta)</code>: si el pago es Tarjeta, <code>costo × (1 − comision/100)</code>; si no, <code>costo</code>. Ya implementado en <code>calculations.ts</code>.</td></tr>
+    <tr><td><strong>Visita</strong> 🆕</td><td>Citas de la misma <code>clienta</code> + misma <code>fecha</code> (mismo salón) = <strong>1 visita</strong>. Hoy el Sheet puede tener varias líneas por cita; sin esta agrupación el ticket sale inflado. Identificación por <strong>nombre</strong> (sin teléfono por ahora).</td></tr>
+    <tr><td><strong>Mes / semana</strong></td><td>Mes calendario y semana lunes–domingo (<code>getLunesDeSemana</code>). Zona horaria local del dispositivo.</td></tr>
+    <tr><td><strong>Cliente nuevo / activo</strong></td><td>Nuevo: su <code>MIN(fecha)</code> histórico cae en el mes. Activo: al menos una visita en los últimos 180 días.</td></tr>
+  </table>
+</div>
+
+<!-- ─────────── 2 · KPIs FASE 1 ─────────── -->
+<div class="section">
+  <h2><span class="n">2</span>KPIs — Fase 1 <span class="badge f1" style="font-size:13px; vertical-align:middle;">datos actuales</span></h2>
+
+  <div class="kpi-block">
+    <div class="kt"><h3>1 · Margen neto mensual</h3><span class="badge f1">Fase 1</span></div>
+    <div class="formula"><span class="c"># Utilidad real, no "libre"</span>
+ingresos   = Σ costoNeto(cita.costo) en el mes
+gastos     = gastos_fijos_mes + gastos_variables_mes + bolsas[naturaleza=<span class="k">gasto_operativo</span>]
+margen     = (ingresos − gastos) / ingresos × 100</div>
+    <div class="meta-grid">
+      <div class="lbl">Origen</div><div>Citas (Sheet) + gastos fijos (Supabase) + gastos Sheet + naturaleza de bolsas.</div>
+      <div class="lbl">Bolsas</div><div>Solo las <code>gasto_operativo</code> (sueldo dueñas) restan. Reserva y reparto no.</div>
+      <div class="lbl">Semáforo</div><div><span class="badge good">Verde ≥ 10%</span> &nbsp; <span class="badge bad">Rojo &lt; 5% por 3 meses</span></div>
+    </div>
+  </div>
+
+  <div class="kpi-block">
+    <div class="kt"><h3>3 · Punto de equilibrio</h3><span class="badge f1">Fase 1</span></div>
+    <div class="formula">PE ≈ gastos_fijos_mes + bolsas[naturaleza=<span class="k">gasto_operativo</span>]
+cobertura = ventas_mes / PE     <span class="c"># mostrar como barra de progreso</span></div>
+    <div class="meta-grid">
+      <div class="lbl">Origen</div><div>Gastos fijos + sueldo dueñas (bolsa gasto_operativo). Simplificación válida: casi todo el costo del salón es fijo.</div>
+      <div class="lbl">Semáforo</div><div><span class="badge good">Verde ventas ≥ 1.3× PE</span> &nbsp; <span class="badge bad">Rojo ventas &lt; PE por 2 meses</span></div>
+    </div>
+  </div>
+
+  <div class="kpi-block">
+    <div class="kt"><h3>5 · Ticket promedio</h3><span class="badge f1">Fase 1</span></div>
+    <div class="formula">ticket = Σ costoNeto(cita.costo) / COUNT(<span class="k">visitas distintas</span>)
+<span class="c"># visita = misma clienta + misma fecha</span></div>
+    <div class="meta-grid">
+      <div class="lbl">Origen</div><div>Citas (Sheet), agrupando por <code>(clienta, fecha)</code>.</div>
+      <div class="lbl">Bolsas</div><div>No aplica.</div>
+      <div class="lbl">Semáforo</div><div><span class="badge good">Verde tendencia plana o ↑</span> &nbsp; <span class="badge bad">Rojo caída &gt; 8% vs prom. 3 meses</span></div>
+    </div>
+  </div>
+
+  <div class="kpi-block">
+    <div class="kt"><h3>6a · Citas por día de la semana</h3><span class="badge f1">Fase 1</span></div>
+    <div class="formula">por_dia[d] = AVG(COUNT(visitas)) agrupado por día de semana (8 semanas)
+<span class="c"># los 2 días con menor promedio = días valle</span></div>
+    <div class="meta-grid">
+      <div class="lbl">Origen</div><div>Citas (Sheet), campo <code>fecha</code> → día de la semana.</div>
+      <div class="lbl">Nota</div><div>El corte por estilista (6b) queda descartado (era Fase 3).</div>
+      <div class="lbl">Semáforo</div><div><span class="badge warn">Heatmap — resalta los 2 días valle</span></div>
+    </div>
+  </div>
+
+  <div class="kpi-block">
+    <div class="kt"><h3>7 · Retención a 90 días &nbsp;·&nbsp; 8 · % ingreso recurrente &nbsp;·&nbsp; 9 · Frecuencia</h3><span class="badge f1">Fase 1</span></div>
+    <div class="formula"><span class="c"># 7 — cohorte por mes de primera visita</span>
+retencion_M = clientas con 2ª visita dentro de 90 días / clientas nuevas en M
+
+<span class="c"># 8 — ingreso de quien ya existía antes del mes</span>
+recurrente% = Σ ingreso de clientas con MIN(fecha) &lt; inicio_mes / ingreso_total_mes
+
+<span class="c"># 9 — mediana (no promedio) de días entre visitas</span>
+frecuencia = MEDIAN( fecha − fecha_anterior ) por clienta, agregada por salón</div>
+    <div class="meta-grid">
+      <div class="lbl">Origen</div><div>Citas (Sheet). Identificación por <strong>nombre</strong> de <code>clienta</code>.</div>
+      <div class="lbl">Bolsas</div><div>No aplican.</div>
+      <div class="lbl">Casos borde</div><div>Cohortes de los últimos 3 meses = "en curso" (gris, nunca rojo). Mes con &lt; 30 visitas = "muestra chica", sin semáforo.</div>
+      <div class="lbl">Semáforo</div><div>7: <span class="badge good">&gt;35%</span>/<span class="badge bad">&lt;20%</span> · 8: <span class="badge good">&gt;60%</span>/<span class="badge bad">&lt;40%</span> · 9: <span class="badge good">30–50 días estable</span></div>
+    </div>
+  </div>
+
+  <div class="kpi-block">
+    <div class="kt"><h3>10 · Clientas en riesgo</h3><span class="badge f1">Fase 1</span></div>
+    <div class="formula">en_riesgo = (hoy − ultima_visita) &gt; <span class="k">1.5</span> × frecuencia_personal
+            AND ultima_visita ≥ hoy − 180 días
+<span class="c"># ordenadas por ingreso histórico desc · factor 1.5 configurable</span></div>
+    <div class="meta-grid">
+      <div class="lbl">Origen</div><div>Citas (Sheet) por <code>clienta</code>. Sin teléfono → fila sin botón wa.me.</div>
+      <div class="lbl">Acción</div><div>Lista accionable + checkbox "contactada" (se persiste para el scorecard).</div>
+      <div class="lbl">Semáforo</div><div><span class="badge good">Lista trabajada cada semana</span> &nbsp; <span class="badge bad">Lista creciendo mes a mes</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────── 3 · KPIs FASE 2 ─────────── -->
+<div class="section">
+  <h2><span class="n">3</span>KPIs — Fase 2 <span class="badge f2" style="font-size:13px; vertical-align:middle;">requieren categoría de gasto</span></h2>
+  <p class="lead">Se agrega <code>categoria</code> (enum: nómina, renta, insumos, servicios, otros) a <strong>gastos fijos</strong> y <strong>gastos admin</strong>. Los gastos del Sheet quedan como variables (sin categoría). Incluye pantalla para clasificar el histórico en bloque.</p>
+
+  <div class="kpi-block">
+    <div class="kt"><h3>2 · Costo de personal</h3><span class="badge f2">Fase 2</span></div>
+    <div class="formula">nomina = gastos[categoria=<span class="k">nomina</span>] + bolsas[naturaleza=<span class="k">gasto_operativo</span>]
+costo_personal% = nomina / ingresos_mes × 100</div>
+    <div class="meta-grid">
+      <div class="lbl">Origen</div><div>Gastos fijos/admin con <code>categoria = nomina</code> <strong>+ las bolsas de sueldo de dueñas</strong> (gasto_operativo).</div>
+      <div class="lbl">Ojo</div><div>Sin contar las bolsas de sueldo, este KPI saldría falsamente bajo. Por eso la naturaleza de bolsa alimenta también este número.</div>
+      <div class="lbl">Semáforo</div><div><span class="badge good">Verde 40–50%</span> &nbsp; <span class="badge bad">Rojo &gt; 55%</span></div>
+    </div>
+  </div>
+
+  <div class="kpi-block">
+    <div class="kt"><h3>4 · Renta como % de ingreso</h3><span class="badge f2">Fase 2</span></div>
+    <div class="formula">renta% = gastos[categoria=<span class="k">renta</span>] / ingresos_mes × 100</div>
+    <div class="meta-grid">
+      <div class="lbl">Origen</div><div>Gastos fijos/admin con <code>categoria = renta</code>.</div>
+      <div class="lbl">Bolsas</div><div>No aplican.</div>
+      <div class="lbl">Semáforo</div><div><span class="badge good">Verde 8–12%</span> &nbsp; <span class="badge bad">Rojo &gt; 18%</span></div>
+    </div>
+  </div>
+
+  <div class="kpi-block">
+    <div class="kt"><h3>Cierre mensual automático (día 1)</h3><span class="badge f2">Fase 2</span></div>
+    <p style="margin-top:6px; color:var(--ink-2); font-size:14px;">Resumen vs mes anterior + top 3 alertas: KPIs que cruzaron a rojo (rojos primero), con el dato que disparó la alerta. Se nutre de todos los KPIs anteriores.</p>
+  </div>
+</div>
+
+<!-- ─────────── 4 · SEMÁFORO GLOBAL ─────────── -->
+<div class="section">
+  <h2><span class="n">4</span>Semáforo global del salón</h2>
+  <table>
+    <tr><th style="width:16%">Color</th><th>Regla</th></tr>
+    <tr><td><span class="badge good">VERDE</span></td><td>Capa A (rentabilidad) en verde <strong>y</strong> sin rojos en Capa C (clientas).</td></tr>
+    <tr><td><span class="badge warn">ÁMBAR</span></td><td>Capa A en verde <strong>pero</strong> hay rojo en Capa C. "Gana hoy, pierde mañana".</td></tr>
+    <tr><td><span class="badge bad">ROJO</span></td><td>Cualquier rojo en Capa A (rentabilidad). Manda sobre todo lo demás.</td></tr>
+  </table>
+  <p style="font-size:13.5px; color:var(--ink-2);">Se implementa como función pura testeable. Las bolsas <code>gasto_operativo</code> ya están dentro de la Capa A vía margen (KPI 1) y costo de personal (KPI 2), así que el semáforo refleja el costo real de las dueñas.</p>
+</div>
+
+</div>
+
+<div class="footer">
+  JR Dashboard Salones · Trazabilidad de datos y fórmulas · Fase 1 + 2 · Campos nuevos: <code>categoria</code> en gastos fijos/admin y <code>naturaleza</code> en bolsas. Nada más. Umbrales = benchmarks de industria, calibrar con 3 meses de datos propios. Pendiente de tu confirmación: la clasificación de cada bolsa actual.
+</div>
+
+</body>
+</html>
