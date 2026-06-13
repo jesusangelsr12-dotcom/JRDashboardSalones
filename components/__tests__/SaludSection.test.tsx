@@ -83,6 +83,16 @@ describe("SaludSection — render + interacciones", () => {
     expect(localStorage.getItem("jr_contactadas_s1")).toContain("Maria Lopez");
   });
 
+  it("al tocar un KPI abre el detalle con fórmula y números reales", () => {
+    render(<SaludSection salon={salon} citas={citas} gastos={[]} salonColor={salon.color} />);
+    fireEvent.click(screen.getByText("Margen neto"));
+    expect(screen.getByText("Fórmula")).toBeInTheDocument();
+    expect(screen.getByText("Con tus números")).toBeInTheDocument();
+    expect(screen.getByText("Ingresos del mes")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Entendido"));
+    expect(screen.queryByText("Fórmula")).not.toBeInTheDocument();
+  });
+
   it("expande el Estado de Resultados detallado", () => {
     render(<SaludSection salon={salon} citas={citas} gastos={[]} salonColor={salon.color} />);
     expect(screen.queryByText("(+) Ingresos brutos")).not.toBeInTheDocument();

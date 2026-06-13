@@ -13,6 +13,7 @@ import {
   type KpiResultado,
 } from "@/lib/salud";
 import EstadoResultados from "./EstadoResultados";
+import Modal from "@/components/ui/Modal";
 
 interface SaludSectionProps {
   salon: Salon;
@@ -40,6 +41,7 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
   const [showDetalle, setShowDetalle] = useState(false);
   const [showRiesgo, setShowRiesgo] = useState(true);
   const [contactadas, setContactadas] = useState<Record<string, string>>({});
+  const [kpiDetalle, setKpiDetalle] = useState<{ nombre: string; kpi: KpiResultado; formato: (v: number) => string } | null>(null);
 
   useEffect(() => {
     const refresh = () => setHoy(new Date());
@@ -135,36 +137,46 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
           valor={formatMoney(salud.ingresosMes)}
           label="Ingreso del mes"
           delta={pctDelta(salud.ingresosMes, saludPrev.ingresosMes)}
+          deltaRef={`vs ${mesPrevioLabel}`}
         />
         <ScoreChip
           valor={String(salud.visitasMes)}
           label="Visitas del mes"
-          deltaText={`${MESES[(month + 11) % 12]}: ${saludPrev.visitasMes}`}
-          deltaUp={salud.visitasMes >= saludPrev.visitasMes}
+          delta={pctDelta(salud.visitasMes, salud.visitasPromedio3Meses)}
+          deltaRef="vs prom. 3 meses"
+          note={`Prom. 3 meses: ${salud.visitasPromedio3Meses.toFixed(0)}`}
         />
         <ScoreChip
-          valor={salud.ticketPromedio.semaforo === "gris" ? "—" : formatMoney(salud.ticketPromedio.valor)}
+          valor={salud.visitasMes > 0 ? formatMoney(salud.ticketPromedio.valor) : "—"}
           label="Ticket promedio"
+          note={salud.visitasMes === 0 ? "Sin visitas este mes" : salud.ticketPromedio.detalle}
         />
         <ScoreChip
           valor={formatMoney(salud.gastosTotales)}
           label="Gasto del mes"
           delta={pctDelta(salud.gastosTotales, saludPrev.gastosTotales)}
+          deltaRef={`vs ${mesPrevioLabel}`}
           invertDelta
         />
       </div>
 
       {/* ── Capa A · Rentabilidad ── */}
       <KpiGroup titulo="Rentabilidad" salonColor={salonColor}>
-        <KpiRow icon="💰" nombre="Margen neto" kpi={salud.margenNeto} formato={(v) => `${v.toFixed(1)}%`} />
-        <KpiRow icon="👥" nombre="Costo de personal" kpi={salud.costoPersonal} formato={(v) => `${v.toFixed(0)}%`} />
-        <KpiRow icon="🏠" nombre="Renta / ingreso" kpi={salud.rentaPct} formato={(v) => `${v.toFixed(1)}%`} />
+        <KpiRow icon="💰" nombre="Margen neto" kpi={salud.margenNeto} formato={(v) => `${v.toFixed(1)}%`} onClick={() => setKpiDetalle({ nombre: "Margen neto", kpi: salud.margenNeto, formato: (v) => `${v.toFixed(1)}%` })} />
+        <KpiRow icon="👥" nombre="Costo de personal" kpi={salud.costoPersonal} formato={(v) => `${v.toFixed(0)}%`} onClick={() => setKpiDetalle({ nombre: "Costo de personal", kpi: salud.costoPersonal, formato: (v) => `${v.toFixed(0)}%` })} />
+        <KpiRow icon="🏠" nombre="Renta / ingreso" kpi={salud.rentaPct} formato={(v) => `${v.toFixed(1)}%`} onClick={() => setKpiDetalle({ nombre: "Renta / ingreso", kpi: salud.rentaPct, formato: (v) => `${v.toFixed(1)}%` })} />
       </KpiGroup>
 
       {/* ── Punto de equilibrio ── */}
-      <div className="bg-surface rounded-card border border-border p-5 mb-6">
+      <button
+        onClick={() => setKpiDetalle({ nombre: "Punto de equilibrio", kpi: salud.puntoEquilibrio, formato: (v) => `${v.toFixed(2)}× cubierto` })}
+        className="w-full text-left bg-surface rounded-card border border-border p-5 mb-6 active:scale-[0.99] transition-transform"
+      >
         <div className="flex justify-between items-baseline mb-3">
-          <span className="text-[14px] font-display font-semibold text-text-primary">Punto de equilibrio</span>
+          <span className="text-[14px] font-display font-semibold text-text-primary flex items-center gap-1.5">
+            Punto de equilibrio
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="text-text-secondary/50"><path d="M6 3L11 8L6 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </span>
           <span className="text-[13px] font-numbers font-bold" style={{ color: colorSemaforo(salud.puntoEquilibrio.semaforo).fg }}>
             {salud.puntoEquilibrio.valor.toFixed(2)}× cubierto
           </span>
@@ -179,7 +191,7 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
           <span>Venta {formatMoney(salud.ingresosMes)}</span>
           <span>PE {formatMoney(salud.peMonto)}</span>
         </div>
-      </div>
+      </button>
 
       {/* ── Operación · al día de hoy (no depende del mes navegado) ── */}
       <div className="flex items-center gap-3 mb-4 mt-2">
@@ -197,6 +209,9 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
             const h = Math.max(6, (d.promedio / max) * 100);
             return (
               <div key={d.dow} className="flex-1 flex flex-col items-center justify-end h-full">
+                <span className="text-[10px] font-numbers font-semibold mb-1" style={{ color: d.esValle ? "#C0392B" : "#6B5D50" }}>
+                  {d.promedio.toFixed(1)}
+                </span>
                 <div
                   className="w-full rounded-md transition-all"
                   style={{
@@ -213,17 +228,18 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
           })}
         </div>
         <p className="text-[12px] text-text-secondary font-display text-center mt-3">
+          Promedio de citas por día.{" "}
           {salud.citasPorDia.some((d) => d.esValle)
-            ? `Días flojos: ${salud.citasPorDia.filter((d) => d.esValle).map((d) => DOW_LABELS_LARGO[d.dow]).join(" y ")} (en rojo)`
-            : "Aún sin suficientes datos para detectar días valle"}
+            ? `Días flojos: ${salud.citasPorDia.filter((d) => d.esValle).map((d) => DOW_LABELS_LARGO[d.dow]).join(" y ")} (en rojo).`
+            : "Aún sin suficientes datos para detectar días valle."}
         </p>
       </div>
 
       {/* ── Capa C · Clientas ── */}
       <KpiGroup titulo="Clientas" salonColor={salonColor}>
-        <KpiRow icon="🔁" nombre="Retención 90 días" kpi={salud.retencion90} formato={(v) => `${v.toFixed(0)}%`} />
-        <KpiRow icon="⭐" nombre="Ingreso recurrente" kpi={salud.ingresoRecurrente} formato={(v) => `${v.toFixed(0)}%`} />
-        <KpiRow icon="📅" nombre="Frecuencia de visita" kpi={salud.frecuenciaVisita} formato={(v) => `${v.toFixed(0)} días`} />
+        <KpiRow icon="🔁" nombre="Retención 90 días" kpi={salud.retencion90} formato={(v) => `${v.toFixed(0)}%`} onClick={() => setKpiDetalle({ nombre: "Retención 90 días", kpi: salud.retencion90, formato: (v) => `${v.toFixed(0)}%` })} />
+        <KpiRow icon="⭐" nombre="Ingreso recurrente" kpi={salud.ingresoRecurrente} formato={(v) => `${v.toFixed(0)}%`} onClick={() => setKpiDetalle({ nombre: "Ingreso recurrente", kpi: salud.ingresoRecurrente, formato: (v) => `${v.toFixed(0)}%` })} />
+        <KpiRow icon="📅" nombre="Frecuencia de visita" kpi={salud.frecuenciaVisita} formato={(v) => `${v.toFixed(0)} días`} onClick={() => setKpiDetalle({ nombre: "Frecuencia de visita", kpi: salud.frecuenciaVisita, formato: (v) => `${v.toFixed(0)} días` })} />
       </KpiGroup>
 
       {/* ── Clientas en riesgo ── */}
@@ -238,6 +254,9 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
 
       {showRiesgo && (
         <div className="bg-surface rounded-card border border-border overflow-hidden mb-6">
+          <p className="text-[12px] text-text-secondary font-display leading-relaxed px-4 pt-4 pb-3 border-b border-border">
+            Clientas que ya pasaron su día habitual de regreso (más de 1.5× lo que suelen tardar) y aún están activas. Ordenadas por lo que han gastado contigo, para que contactes primero a las más valiosas.
+          </p>
           {salud.clientasEnRiesgo.length === 0 ? (
             <p className="text-[13px] text-text-secondary font-display text-center py-6">Sin clientas en riesgo 🎉</p>
           ) : (
@@ -251,10 +270,10 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
                   <div className="flex-1 min-w-0">
                     <p className="text-[14px] font-display font-semibold text-text-primary truncate">{c.clienta}</p>
                     <p className="text-[11.5px] text-text-secondary font-display">
-                      Hace {c.diasDesdeUltima}d · vuelve cada {c.frecuenciaPersonal}d
+                      Última visita hace {c.diasDesdeUltima} días · suele volver cada {c.frecuenciaPersonal}
                     </p>
                   </div>
-                  <span className="text-[13px] font-numbers font-bold text-text-primary mr-1">{formatMoney(c.ingresoHistorico)}</span>
+                  <span className="text-[13px] font-numbers font-bold text-text-primary mr-1" title="Total gastado contigo">{formatMoney(c.ingresoHistorico)}</span>
                   <button
                     onClick={() => toggleContactada(c.clienta)}
                     className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-90"
@@ -296,27 +315,38 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
           </motion.div>
         )}
       </AnimatePresence>
+
+      {kpiDetalle && (
+        <KpiDetalleModal
+          nombre={kpiDetalle.nombre}
+          kpi={kpiDetalle.kpi}
+          formato={kpiDetalle.formato}
+          salonColor={salonColor}
+          onClose={() => setKpiDetalle(null)}
+        />
+      )}
     </section>
   );
 }
 
 // ── Sub-componentes ──
 
-function ScoreChip({ valor, label, delta, deltaText, deltaUp, invertDelta }: {
-  valor: string; label: string; delta?: number | null; deltaText?: string; deltaUp?: boolean; invertDelta?: boolean;
+function ScoreChip({ valor, label, delta, deltaRef, deltaText, deltaUp, invertDelta, note }: {
+  valor: string; label: string; delta?: number | null; deltaRef?: string; deltaText?: string; deltaUp?: boolean; invertDelta?: boolean; note?: string;
 }) {
   let txt = deltaText;
   let up = deltaUp;
   if (delta != null) {
     const good = invertDelta ? delta <= 0 : delta >= 0;
     up = good;
-    txt = `${delta >= 0 ? "▲" : "▼"} ${Math.abs(delta).toFixed(0)}%`;
+    txt = `${delta >= 0 ? "▲" : "▼"} ${Math.abs(delta).toFixed(0)}%${deltaRef ? ` ${deltaRef}` : ""}`;
   }
   return (
     <div className="bg-surface rounded-card border border-border p-4">
       <p className="font-numbers text-[22px] font-bold text-text-primary leading-none">{valor}</p>
       <p className="text-[11.5px] text-text-secondary font-display mt-1.5 leading-tight">{label}</p>
       {txt && <p className="text-[11px] font-display font-bold mt-2" style={{ color: up ? "#1F9D55" : "#C0392B" }}>{txt}</p>}
+      {!txt && note && <p className="text-[11px] font-display font-medium text-text-secondary mt-2">{note}</p>}
     </div>
   );
 }
@@ -330,10 +360,10 @@ function KpiGroup({ titulo, salonColor, children }: { titulo: string; salonColor
   );
 }
 
-function KpiRow({ icon, nombre, kpi, formato }: { icon: string; nombre: string; kpi: KpiResultado; formato: (v: number) => string }) {
+function KpiRow({ icon, nombre, kpi, formato, onClick }: { icon: string; nombre: string; kpi: KpiResultado; formato: (v: number) => string; onClick?: () => void }) {
   const c = colorSemaforo(kpi.semaforo);
   return (
-    <div className="flex items-center gap-3.5 px-4 py-3.5 border-b border-border last:border-b-0">
+    <button onClick={onClick} className="w-full flex items-center gap-3.5 px-4 py-3.5 border-b border-border last:border-b-0 text-left active:bg-bg/60 transition-colors">
       <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[18px] flex-shrink-0" style={{ backgroundColor: c.bg }}>{icon}</div>
       <div className="flex-1 min-w-0">
         <p className="text-[14.5px] font-display font-semibold text-text-primary">{nombre}</p>
@@ -343,7 +373,44 @@ function KpiRow({ icon, nombre, kpi, formato }: { icon: string; nombre: string; 
         <p className="text-[15px] font-numbers font-bold text-text-primary">{kpi.semaforo === "gris" ? "—" : formato(kpi.valor)}</p>
         <span className="inline-block px-2.5 py-0.5 rounded-full text-[10.5px] font-display font-bold mt-1" style={{ backgroundColor: c.bg, color: c.fg }}>{c.label}</span>
       </div>
-    </div>
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="flex-shrink-0 text-text-secondary/50"><path d="M6 3L11 8L6 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+    </button>
+  );
+}
+
+function KpiDetalleModal({ nombre, kpi, formato, salonColor, onClose }: { nombre: string; kpi: KpiResultado; formato: (v: number) => string; salonColor: string; onClose: () => void }) {
+  const c = colorSemaforo(kpi.semaforo);
+  return (
+    <Modal open onClose={onClose}>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-[18px] font-display font-bold text-text-primary">{nombre}</h3>
+        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-display font-bold" style={{ backgroundColor: c.bg, color: c.fg }}>{c.label}</span>
+      </div>
+      <p className="font-numbers text-[34px] font-bold text-text-primary leading-none mb-3">{kpi.semaforo === "gris" ? "—" : formato(kpi.valor)}</p>
+      {kpi.explicacion && <p className="text-[13.5px] text-text-secondary font-display leading-relaxed mb-4">{kpi.explicacion}</p>}
+      {kpi.formula && (
+        <div className="mb-4">
+          <p className="text-[10px] uppercase tracking-[0.08em] text-text-secondary font-display font-semibold mb-1.5">Fórmula</p>
+          <p className="text-[12.5px] font-mono bg-bg border border-border rounded-[10px] px-3 py-2.5 text-text-primary leading-relaxed">{kpi.formula}</p>
+        </div>
+      )}
+      {kpi.desglose && kpi.desglose.length > 0 && (
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.08em] text-text-secondary font-display font-semibold mb-1.5">Con tus números</p>
+          <div className="bg-bg border border-border rounded-[10px] overflow-hidden">
+            {kpi.desglose.map((d, i) => (
+              <div key={i} className="flex items-center justify-between px-3 py-2 border-b border-border last:border-b-0">
+                <span className="text-[13px] font-display text-text-secondary">{d.label}</span>
+                <span className="text-[13px] font-numbers font-semibold text-text-primary">{d.valor}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <button onClick={onClose} className="w-full mt-5 py-3 rounded-card text-[14px] font-display font-semibold text-white active:scale-[0.98] transition-transform" style={{ backgroundColor: salonColor }}>
+        Entendido
+      </button>
+    </Modal>
   );
 }
 

@@ -8,7 +8,7 @@
 // ════════════════════════════════════════════════════════════════
 
 import type { Cita, Gasto, GastoFijo, Bolsa, CategoriaGasto } from "./types";
-import { costoNeto, getInicioMes, getFinMes, enRango } from "./calculations";
+import { costoNeto, getInicioMes, getFinMes, enRango, formatMoney } from "./calculations";
 
 export type Semaforo = "verde" | "ambar" | "rojo" | "gris";
 
@@ -21,6 +21,9 @@ export interface KpiResultado {
   valor: number;
   semaforo: Semaforo;
   detalle?: string;
+  explicacion?: string;                          // qué significa, en una frase
+  formula?: string;                              // fórmula sencilla
+  desglose?: { label: string; valor: string }[]; // números reales del cálculo
 }
 
 export interface DiaSemana {
@@ -41,6 +44,7 @@ export interface ClientaRiesgo {
 export interface SaludSnapshot {
   ingresosMes: number;
   visitasMes: number;
+  visitasPromedio3Meses: number;
   // Capa A · Rentabilidad
   margenNeto: KpiResultado;        // valor = % margen
   costoPersonal: KpiResultado;     // valor = % nómina/ingreso
@@ -69,6 +73,8 @@ function mediana(nums: number[]): number {
   const mid = Math.floor(s.length / 2);
   return s.length % 2 !== 0 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
 }
+
+const pctStr = (v: number) => `${v.toFixed(1)}%`;
 
 function fechaKey(d: Date): string {
   return d.toISOString().split("T")[0];
@@ -147,6 +153,16 @@ export function calcularSalud(
     valor: margenPct,
     semaforo: ingresosMes === 0 ? "gris" : margenPct >= 10 ? "verde" : margenPct < 5 ? "rojo" : "ambar",
     detalle: "Meta ≥ 10%",
+    explicacion: "De cada $100 que entran, cuánto te queda como utilidad después de todos los gastos y los sueldos de las dueñas.",
+    formula: "(Ingresos − gastos fijos − gastos variables − sueldo dueñas) ÷ Ingresos",
+    desglose: [
+      { label: "Ingresos del mes", valor: formatMoney(ingresosMes) },
+      { label: "− Gastos fijos", valor: formatMoney(gfMes) },
+      { label: "− Gastos variables", valor: formatMoney(gastosVariablesMes) },
+      { label: "− Sueldo dueñas (bolsas op.)", valor: formatMoney(sueldoOperativo) },
+      { label: "= Utilidad", valor: formatMoney(utilidad) },
+      { label: "Margen", valor: pctStr(margenPct) },
+    ],
   };
 
   // ── KPI 2 · Costo de personal ──
@@ -160,15 +176,37 @@ export function calcularSalud(
     semaforo:
       ingresosMes === 0 ? "gris" : costoPersonalPct > 55 ? "rojo" : costoPersonalPct >= 40 && costoPersonalPct <= 50 ? "verde" : "ambar",
     detalle: "Ideal 40–50%",
+    explicacion: "Qué porcentaje de tus ventas se va en pagar a las personas (nómina + sueldos de las dueñas).",
+    formula: "(Nómina + sueldo dueñas) ÷ Ingresos",
+    desglose: [
+      { label: "Nómina (gastos categoría nómina)", valor: formatMoney(nominaGastos) },
+      { label: "+ Sueldo dueñas (bolsas op.)", valor: formatMoney(sueldoOperativo) },
+      { label: "= Total personal", valor: formatMoney(nomina) },
+      { label: "÷ Ingresos del mes", valor: formatMoney(ingresosMes) },
+      { label: "= Costo de personal", valor: pctStr(costoPersonalPct) },
+    ],
   };
 
   // ── KPI 3 · Punto de equilibrio ──
   const peMonto = gfMes + sueldoOperativo;
   const cobertura = peMonto > 0 ? ingresosMes / peMonto : 0;
+  const faltaParaPE = Math.max(0, peMonto - ingresosMes);
   const puntoEquilibrio: KpiResultado = {
     valor: cobertura,
     semaforo: peMonto === 0 ? "gris" : cobertura >= PE_COBERTURA_VERDE ? "verde" : cobertura < 1 ? "rojo" : "ambar",
     detalle: `Ventas ≥ ${PE_COBERTURA_VERDE}× PE`,
+    explicacion: "Cuánto necesitas vender al mes solo para no perder. Arriba de eso, empiezas a ganar.",
+    formula: "Punto de equilibrio = gastos fijos + sueldo dueñas",
+    desglose: [
+      { label: "Gastos fijos del mes", valor: formatMoney(gfMes) },
+      { label: "+ Sueldo dueñas (bolsas op.)", valor: formatMoney(sueldoOperativo) },
+      { label: "= Punto de equilibrio", valor: formatMoney(peMonto) },
+      { label: "Ventas del mes", valor: formatMoney(ingresosMes) },
+      { label: "Cobertura", valor: `${cobertura.toFixed(2)}×` },
+      faltaParaPE > 0
+        ? { label: "Falta para cubrir el PE", valor: formatMoney(faltaParaPE) }
+        : { label: "Excedente sobre el PE", valor: formatMoney(ingresosMes - peMonto) },
+    ],
   };
 
   // ── KPI 4 · Renta % ──
@@ -181,25 +219,35 @@ export function calcularSalud(
     semaforo:
       ingresosMes === 0 || renta === 0 ? "gris" : rentaPctVal > 18 ? "rojo" : rentaPctVal >= 8 && rentaPctVal <= 12 ? "verde" : "ambar",
     detalle: "Ideal 8–12%",
+    explicacion: "Qué porcentaje de tus ventas se va en pagar la renta del local. Si pasa del 18%, el local te queda grande o las ventas chicas.",
+    formula: "Renta ÷ Ingresos",
+    desglose: [
+      { label: "Renta del mes (gastos categoría renta)", valor: formatMoney(renta) },
+      { label: "÷ Ingresos del mes", valor: formatMoney(ingresosMes) },
+      { label: "= Renta sobre ingreso", valor: pctStr(rentaPctVal) },
+    ],
   };
 
   // ── KPI 5 · Ticket promedio ──
   const visitasMes = agruparVisitas(citasMes, comisionTarjeta);
   const ticket = visitasMes.length > 0 ? ingresosMes / visitasMes.length : 0;
-  // Promedio de ticket de los 3 meses anteriores
+  // Promedio de ticket y de visitas de los 3 meses anteriores
   const ticketsPrevios: number[] = [];
+  const visitasPrevias: number[] = [];
   for (let i = 1; i <= 3; i++) {
     const d = new Date(year, month - i, 1);
     const ini = getInicioMes(d.getFullYear(), d.getMonth());
     const fin = getFinMes(d.getFullYear(), d.getMonth());
     const cm = enRango(citas, ini, fin);
     const v = agruparVisitas(cm, comisionTarjeta);
+    visitasPrevias.push(v.length);
     if (v.length > 0) {
       const ing = cm.reduce((s, c) => s + costoNeto(c.costo, c.metodoPago, comisionTarjeta), 0);
       ticketsPrevios.push(ing / v.length);
     }
   }
   const ticketProm3 = ticketsPrevios.length > 0 ? ticketsPrevios.reduce((a, b) => a + b, 0) / ticketsPrevios.length : 0;
+  const visitasProm3 = visitasPrevias.length > 0 ? visitasPrevias.reduce((a, b) => a + b, 0) / visitasPrevias.length : 0;
   const muestraChica = visitasMes.length < 30;
   const ticketPromedio: KpiResultado = {
     valor: ticket,
@@ -273,6 +321,14 @@ export function calcularSalud(
     semaforo:
       cohorte === 0 || enCurso ? "gris" : retencionPct > 35 ? "verde" : retencionPct < 20 ? "rojo" : "ambar",
     detalle: enCurso ? "En curso" : `${retenidos}/${cohorte} clientas`,
+    explicacion: "De las clientas nuevas de este mes, cuántas regresaron al menos una vez en los siguientes 90 días.",
+    formula: "Clientas nuevas que volvieron en 90 días ÷ Clientas nuevas del mes",
+    desglose: [
+      { label: "Clientas nuevas del mes", valor: String(cohorte) },
+      { label: "De ellas, volvieron en 90 días", valor: String(retenidos) },
+      { label: "= Retención", valor: cohorte === 0 ? "—" : pctStr(retencionPct) },
+      ...(enCurso ? [{ label: "Estado", valor: "En curso (mes reciente)" }] : []),
+    ],
   };
 
   // ── KPI 8 · % ingreso de clientas recurrentes ──
@@ -287,6 +343,13 @@ export function calcularSalud(
     semaforo:
       ingresosMes === 0 ? "gris" : recurrentePct > 60 ? "verde" : recurrentePct < 40 ? "rojo" : "ambar",
     detalle: "Meta > 60%",
+    explicacion: "Qué parte del ingreso del mes vino de clientas que ya te habían visitado antes (no de clientas nuevas).",
+    formula: "Ingreso de clientas que ya existían ÷ Ingreso total del mes",
+    desglose: [
+      { label: "Ingreso de clientas recurrentes", valor: formatMoney(ingresoRecurrenteMonto) },
+      { label: "÷ Ingreso total del mes", valor: formatMoney(ingresosMes) },
+      { label: "= Ingreso recurrente", valor: pctStr(recurrentePct) },
+    ],
   };
 
   // ── KPI 9 · Frecuencia de visita (mediana del salón) ──
@@ -295,6 +358,12 @@ export function calcularSalud(
     semaforo:
       intervalosSalon.length === 0 ? "gris" : medianaSalon >= 30 && medianaSalon <= 50 ? "verde" : "ambar",
     detalle: "Estable 30–50 días",
+    explicacion: "Cada cuántos días, en promedio (mediana), regresan tus clientas. Usamos la mediana para que las visitas muy espaciadas no inflen el número.",
+    formula: "Mediana de los días entre visitas consecutivas de cada clienta",
+    desglose: [
+      { label: "Intervalos entre visitas medidos", valor: String(intervalosSalon.length) },
+      { label: "= Frecuencia típica (mediana)", valor: intervalosSalon.length === 0 ? "—" : `${Math.round(medianaSalon)} días` },
+    ],
   };
 
   // ── KPI 10 · Clientas en riesgo ──
@@ -338,6 +407,7 @@ export function calcularSalud(
   return {
     ingresosMes,
     visitasMes: visitasMes.length,
+    visitasPromedio3Meses: visitasProm3,
     margenNeto,
     costoPersonal,
     puntoEquilibrio,
