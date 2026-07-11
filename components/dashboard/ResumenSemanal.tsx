@@ -1,15 +1,24 @@
 "use client";
 
-import { useMemo } from "react";
-import type { ResumenSemanal as ResumenType, MovimientoBolsa } from "@/lib/types";
-import { formatMoney, calcularGastoProductosMes } from "@/lib/calculations";
+import { useMemo, useState } from "react";
+import type { ResumenSemanal as ResumenType, MovimientoBolsa, Gasto, GastoFijo } from "@/lib/types";
+import {
+  formatMoney,
+  calcularGastoProductosMes,
+  getLunesDeSemana,
+  getDomingoDeSemana,
+  enRango,
+} from "@/lib/calculations";
 import KpiCard from "./KpiCard";
 import MetodoBreakdown from "./MetodoBreakdown";
+import GastoDetalleModal from "./GastoDetalleModal";
 
 interface ResumenSemanalProps {
   resumen: ResumenType;
   salonColor: string;
   movimientos?: MovimientoBolsa[];
+  gastosFijos?: GastoFijo[];
+  gastos?: Gasto[];
 }
 
 const SEMAFORO_COLORS: Record<string, string> = {
@@ -22,7 +31,16 @@ export default function ResumenSemanal({
   resumen,
   salonColor,
   movimientos = [],
+  gastosFijos = [],
+  gastos = [],
 }: ResumenSemanalProps) {
+  const [detalleGastos, setDetalleGastos] = useState<"fijos" | "bolsas" | null>(null);
+
+  const gastosSemana = useMemo(() => {
+    const hoy = new Date();
+    return enRango(gastos, getLunesDeSemana(hoy), getDomingoDeSemana(hoy));
+  }, [gastos]);
+
   const kpiProductos = useMemo(() => {
     const hoy = new Date();
     return calcularGastoProductosMes(
@@ -50,6 +68,7 @@ export default function ResumenSemanal({
           label="Gastos fijos"
           value={resumen.gastosFijos}
           negative
+          onClick={() => setDetalleGastos("fijos")}
         />
 
         {/* Gastos variables (info, no restan de libre) */}
@@ -57,6 +76,7 @@ export default function ResumenSemanal({
           label="Gastos en bolsas"
           value={resumen.gastosVariables}
           negative
+          onClick={() => setDetalleGastos("bolsas")}
         />
 
         {/* Dinero libre — full width */}
@@ -134,6 +154,16 @@ export default function ResumenSemanal({
       <MetodoBreakdown
         porMetodo={resumen.porMetodo}
         total={resumen.ingresos}
+      />
+
+      {/* Detalle de gastos (fijos / en bolsas) */}
+      <GastoDetalleModal
+        open={detalleGastos !== null}
+        onClose={() => setDetalleGastos(null)}
+        tipo={detalleGastos}
+        gastosFijos={gastosFijos}
+        gastosSemana={gastosSemana}
+        salonColor={salonColor}
       />
     </section>
   );

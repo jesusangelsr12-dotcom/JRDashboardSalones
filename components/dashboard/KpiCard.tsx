@@ -8,6 +8,7 @@ interface KpiCardProps {
   accentColor?: string;
   variant?: "large" | "default";
   negative?: boolean;
+  onClick?: () => void;
 }
 
 export default function KpiCard({
@@ -16,14 +17,17 @@ export default function KpiCard({
   accentColor,
   variant = "default",
   negative = false,
+  onClick,
 }: KpiCardProps) {
   const isLarge = variant === "large";
+  const Wrapper = onClick ? "button" : "div";
 
   return (
-    <div
+    <Wrapper
+      onClick={onClick}
       className={`relative overflow-hidden rounded-card border border-border p-4 ${
         isLarge ? "bg-surface col-span-2" : "bg-surface"
-      }`}
+      } ${onClick ? "text-left w-full transition-all active:scale-[0.98]" : ""}`}
     >
       {/* Accent stripe */}
       {accentColor && (
@@ -45,6 +49,12 @@ export default function KpiCard({
         {negative && value > 0 ? "-" : ""}
         {formatMoney(Math.abs(value))}
       </p>
-    </div>
+
+      {onClick && (
+        <p className="text-[10px] font-mono text-text-secondary mt-1.5">
+          Ver detalle
+        </p>
+      )}
+    </Wrapper>
   );
 }
