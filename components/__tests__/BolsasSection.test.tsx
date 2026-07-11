@@ -34,6 +34,7 @@ const resumen: ResumenSemanal = {
   ingresos: 10000,
   gastosVariables: 0,
   gastosFijos: 2500,
+  comisiones: 0,
   totalGastos: 2500,
   libre: 8000,
   porMetodo: { Efectivo: 10000, Tarjeta: 0, Transferencia: 0 },

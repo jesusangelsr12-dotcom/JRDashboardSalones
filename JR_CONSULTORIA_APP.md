@@ -166,10 +166,23 @@ UNIQUE constraint: `cierres_salon_semana_unique (salon_id, semana_inicio)`
 - Se aplica en todos los cálculos: `costoNeto(costo, metodoPago, comisionTarjeta)`
 - En tab Tabla: pagos con tarjeta muestran monto original + monto neto debajo
 
+### Comisiones a Trabajadoras (hoja "Comisiones")
+- Se leen del Google Sheet, hoja `Comisiones` (opcional; si no existe → `[]`)
+- Columnas: fecha, hora, clienta, trabajadora, Item, Tipo, Costo de Item, comision %, **pago de comision**
+- El monto se toma tal cual viene (`pago de comision`), sin recalcular
+- **Restan del libre como gasto**: `libre = ingresos − gastosFijos − comisiones`
+- Impactan: resumen semanal, reparto a bolsas, cierre semanal/auto-close, Estado de Resultados, Salud (margen, costo de personal) y Gráficas (Top gastos, agrupadas "Comisiones · trabajadora")
+- Los cierres históricos NO se recalculan (quedan con la fórmula vigente al cerrarse)
+- KPI tocable "Comisiones" en tab Resumen con modal de detalle (`GastoDetalleModal`)
+
+### Detalle de gastos en tab Resumen (`GastoDetalleModal.tsx`)
+- Las tarjetas "Gastos fijos", "Comisiones" y "Gastos en bolsas" son tocables ("Ver detalle")
+- Abren modal bottom-sheet con los conceptos individuales y el total
+
 ### Estado de Resultados (`EstadoResultados.tsx`)
 - 3 vistas: Mensual, Semanal, Anual (YTD)
 - Navegación por período (mes, semana, año)
-- Líneas: Ingresos brutos → Comisión tarjeta → Ingresos netos → Gastos fijos (detallados) → Gastos variables → **Utilidad Operativa** + Margen %
+- Líneas: Ingresos brutos → Comisión tarjeta → Ingresos netos → Gastos fijos (detallados) → Comisiones trabajadoras → Gastos variables → **Utilidad Operativa** + Margen %
 - YTD: acumula desde inicio del año hasta hoy
 
 ### Tabla de Transacciones
@@ -225,10 +238,21 @@ Ingresos brutos (suma de cierres en período)
 = Ingresos netos
 - Gastos fijos mensual (monto / 4 para semanal; monto * meses para mensual en YTD)
 - Gastos fijos semanal (monto para semanal; monto * semanas para YTD)
+- Comisiones trabajadoras (suma de pago_de_comision en el período)
 - Gastos variables (suma de gastos de cierres)
 = Utilidad Operativa
   Margen % = Utilidad / Ingresos netos * 100
 ```
+
+### Dinero libre (resumen semanal / cierre)
+
+```
+libre = ingresos (netos de comisión tarjeta)
+      − gastos fijos prorrateados a la semana
+      − comisiones a trabajadoras de la semana
+```
+Los gastos variables NO restan del libre: se descuentan del acumulado
+de la bolsa asignada al cerrar la semana.
 
 ### Proration de gastos fijos por modo
 - **Mensual**: `gf.frecuencia === 'mensual' ? gf.monto : gf.monto * 4`

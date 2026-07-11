@@ -58,6 +58,20 @@ export interface GastoRaw {
   metodo_pago: string;
 }
 
+// Hoja "Comisiones": una fila por ítem cobrado con comisión de trabajadora.
+// El header "clienta" está duplicado en el Sheet (col B es la hora); el parser
+// genérico se queda con la última columna, que es el nombre real.
+export interface ComisionRaw {
+  fecha: string;
+  clienta: string;
+  trabajadora: string;
+  item: string;
+  tipo: string;
+  costo_de_item: string;
+  "comision_%": string;
+  pago_de_comision: string;
+}
+
 // Parseados
 
 export interface ServicioItem {
@@ -85,6 +99,17 @@ export interface Gasto {
   source?: "sheets" | "admin";
   adminId?: string;
   categoria?: CategoriaGasto; // solo gastos admin; los de Sheet son variables sin categoría
+}
+
+export interface Comision {
+  fecha: Date;
+  clienta: string;
+  trabajadora: string;
+  item: string;
+  tipo: "servicio" | "producto";
+  costo: number;
+  porcentaje: number;
+  monto: number; // pago de comisión (costo × %)
 }
 
 export type MetodoPago = "Efectivo" | "Tarjeta" | "Transferencia";
@@ -145,6 +170,7 @@ export interface ResumenSemanal {
   ingresos: number;
   gastosVariables: number;
   gastosFijos: number;
+  comisiones: number;
   totalGastos: number;
   libre: number;
   porMetodo: {
@@ -172,6 +198,7 @@ export interface SemanaDetectada {
   ingresos: number;
   gastosVariables: number;
   gastosFijos: number;
+  comisiones: number;
   libre: number;
   cerrada: boolean;
 }

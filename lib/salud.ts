@@ -7,7 +7,7 @@
 // y la fórmula exacta de cada resultado.
 // ════════════════════════════════════════════════════════════════
 
-import type { Cita, Gasto, GastoFijo, Bolsa, CategoriaGasto } from "./types";
+import type { Cita, Gasto, Comision, GastoFijo, Bolsa, CategoriaGasto } from "./types";
 import { costoNeto, getInicioMes, getFinMes, enRango, formatMoney } from "./calculations";
 
 export type Semaforo = "verde" | "ambar" | "rojo" | "gris";
@@ -124,6 +124,7 @@ export function agruparVisitas(citas: Cita[], comisionTarjeta: number): Visita[]
 export function calcularSalud(
   citas: Cita[],
   gastos: Gasto[],
+  comisiones: Comision[],
   gastosFijos: GastoFijo[],
   bolsas: Bolsa[],
   year: number,
@@ -152,22 +153,24 @@ export function calcularSalud(
   const ingresosMes = citasMes.reduce((s, c) => s + costoNeto(c.costo, c.metodoPago, comisionTarjeta), 0);
   const gfMes = gastosFijosMes(gastosFijos) * mesesP;
   const gastosVariablesMes = gastosMes.reduce((s, g) => s + g.monto, 0);
-  const libreMes = Math.max(0, ingresosMes - gfMes);
+  const comisionesMes = enRango(comisiones, inicioMes, finMes).reduce((s, c) => s + c.monto, 0);
+  const libreMes = Math.max(0, ingresosMes - gfMes - comisionesMes);
   const sueldoOperativo = libreMes * pctGastoOperativo(bolsas);
 
   // ── KPI 1 · Margen neto ──
-  const gastosTotales = gfMes + gastosVariablesMes + sueldoOperativo;
+  const gastosTotales = gfMes + comisionesMes + gastosVariablesMes + sueldoOperativo;
   const utilidad = ingresosMes - gastosTotales;
   const margenPct = ingresosMes > 0 ? (utilidad / ingresosMes) * 100 : 0;
   const margenNeto: KpiResultado = {
     valor: margenPct,
     semaforo: ingresosMes === 0 ? "gris" : margenPct >= 10 ? "verde" : margenPct < 5 ? "rojo" : "ambar",
     detalle: "Meta ≥ 10%",
-    explicacion: "De cada $100 que entran, cuánto te queda como utilidad después de todos los gastos y los sueldos de las dueñas.",
-    formula: "(Ingresos − gastos fijos − gastos variables − sueldo dueñas) ÷ Ingresos",
+    explicacion: "De cada $100 que entran, cuánto te queda como utilidad después de todos los gastos, las comisiones y los sueldos de las dueñas.",
+    formula: "(Ingresos − gastos fijos − comisiones − gastos variables − sueldo dueñas) ÷ Ingresos",
     desglose: [
       { label: `Ingresos ${pWord}`, valor: formatMoney(ingresosMes) },
       { label: "− Gastos fijos", valor: formatMoney(gfMes) },
+      { label: "− Comisiones trabajadoras", valor: formatMoney(comisionesMes) },
       { label: "− Gastos variables", valor: formatMoney(gastosVariablesMes) },
       { label: "− Sueldo dueñas (bolsas op.)", valor: formatMoney(sueldoOperativo) },
       { label: "= Utilidad", valor: formatMoney(utilidad) },
@@ -179,17 +182,18 @@ export function calcularSalud(
   const nominaGastos =
     gastosFijosCategoria(gastosFijos, "nomina") * mesesP +
     gastosMes.filter((g) => g.categoria === "nomina").reduce((s, g) => s + g.monto, 0);
-  const nomina = nominaGastos + sueldoOperativo;
+  const nomina = nominaGastos + comisionesMes + sueldoOperativo;
   const costoPersonalPct = ingresosMes > 0 ? (nomina / ingresosMes) * 100 : 0;
   const costoPersonal: KpiResultado = {
     valor: costoPersonalPct,
     semaforo:
       ingresosMes === 0 ? "gris" : costoPersonalPct > 55 ? "rojo" : costoPersonalPct >= 40 && costoPersonalPct <= 50 ? "verde" : "ambar",
     detalle: "Ideal 40–50%",
-    explicacion: "Qué porcentaje de tus ventas se va en pagar a las personas (nómina + sueldos de las dueñas).",
-    formula: "(Nómina + sueldo dueñas) ÷ Ingresos",
+    explicacion: "Qué porcentaje de tus ventas se va en pagar a las personas (nómina + comisiones + sueldos de las dueñas).",
+    formula: "(Nómina + comisiones + sueldo dueñas) ÷ Ingresos",
     desglose: [
       { label: "Nómina (gastos categoría nómina)", valor: formatMoney(nominaGastos) },
+      { label: "+ Comisiones trabajadoras", valor: formatMoney(comisionesMes) },
       { label: "+ Sueldo dueñas (bolsas op.)", valor: formatMoney(sueldoOperativo) },
       { label: "= Total personal", valor: formatMoney(nomina) },
       { label: `÷ Ingresos ${pWord}`, valor: formatMoney(ingresosMes) },

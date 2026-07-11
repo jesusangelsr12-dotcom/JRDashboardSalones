@@ -65,7 +65,7 @@ describe("calcularSalud — ejemplo del documento de trazabilidad", () => {
   const gastos = [gasto(12, 3000, "insumos")];
   const hoy = new Date(2026, 4, 31, 12, 0, 0); // dentro de mayo
 
-  const salud = calcularSalud(citas, gastos, gastosFijos, bolsas, 2026, 4, 0, hoy);
+  const salud = calcularSalud(citas, gastos, [], gastosFijos, bolsas, 2026, 4, 0, hoy);
 
   it("ingresos del mes = 40,000", () => {
     expect(salud.ingresosMes).toBe(40000);
@@ -96,6 +96,40 @@ describe("calcularSalud — ejemplo del documento de trazabilidad", () => {
   });
 });
 
+describe("calcularSalud — comisiones a trabajadoras", () => {
+  const citas = [
+    cita("Ana", 5, 10000),
+    cita("Bea", 10, 10000),
+    cita("Cata", 15, 10000),
+    cita("Dani", 20, 10000),
+  ];
+  const hoy = new Date(2026, 4, 31, 12, 0, 0);
+  const comisiones = [{
+    fecha: new Date(2026, 4, 10, 12),
+    clienta: "Bea",
+    trabajadora: "Jaqui",
+    item: "Tinte",
+    tipo: "servicio" as const,
+    costo: 10000,
+    porcentaje: 10,
+    monto: 1000,
+  }];
+
+  const salud = calcularSalud(citas, [], comisiones, gastosFijos, bolsas, 2026, 4, 0, hoy);
+
+  it("restan del libre antes del sueldo operativo y de la utilidad", () => {
+    // libre = 40000 - 12000 - 1000 = 27000; sueldoOperativo = 13500
+    // utilidad = 40000 - (12000 + 1000 + 0 + 13500) = 13500
+    expect(salud.utilidad).toBe(13500);
+    expect(salud.peMonto).toBe(25500); // fijos 12000 + sueldo op. 13500
+  });
+
+  it("cuentan como costo de personal", () => {
+    // (1000 + 13500) / 40000 = 36.25%
+    expect(salud.costoPersonal.valor).toBeCloseTo(36.25);
+  });
+});
+
 describe("calcularSalud — visitas del mes", () => {
   it("cuenta visitas distintas del mes (misma clienta+día = 1)", () => {
     const hoy = new Date(2026, 4, 31, 12, 0, 0);
@@ -103,7 +137,7 @@ describe("calcularSalud — visitas del mes", () => {
       cita("Ana", 5, 200), cita("Ana", 5, 300), // misma clienta, mismo día = 1 visita
       cita("Bea", 6, 400),
     ];
-    const salud = calcularSalud(citas, [], gastosFijos, bolsas, 2026, 4, 0, hoy);
+    const salud = calcularSalud(citas, [], [], gastosFijos, bolsas, 2026, 4, 0, hoy);
     expect(salud.visitasMes).toBe(2);
   });
 });
@@ -117,7 +151,7 @@ describe("calcularSalud — clientas en riesgo", () => {
       { ...cita("Ana", 11, 500), fecha: new Date(2026, 2, 11) },
       { ...cita("Ana", 21, 500), fecha: new Date(2026, 2, 21) }, // última: ~70 días antes de hoy
     ];
-    const salud = calcularSalud(citas, [], gastosFijos, bolsas, 2026, 4, 0, hoy);
+    const salud = calcularSalud(citas, [], [], gastosFijos, bolsas, 2026, 4, 0, hoy);
     expect(salud.clientasEnRiesgo.some((c) => c.clienta === "Ana")).toBe(true);
   });
 
@@ -125,7 +159,7 @@ describe("calcularSalud — clientas en riesgo", () => {
     const hoy = new Date(2026, 4, 31, 12, 0, 0);
     // Sole fue una sola vez hace 40 días: sin patrón → no debe aparecer en riesgo
     const citas = [{ ...cita("Sole", 1, 500), fecha: new Date(2026, 3, 21) }];
-    const salud = calcularSalud(citas, [], gastosFijos, bolsas, 2026, 4, 0, hoy);
+    const salud = calcularSalud(citas, [], [], gastosFijos, bolsas, 2026, 4, 0, hoy);
     expect(salud.clientasEnRiesgo.some((c) => c.clienta === "Sole")).toBe(false);
   });
 });

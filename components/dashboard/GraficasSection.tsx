@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { Cita, Gasto, DatosGraficas } from "@/lib/types";
+import type { Cita, Gasto, Comision, DatosGraficas } from "@/lib/types";
 import {
   formatMoney,
   calcularDatosGraficas,
@@ -17,9 +17,13 @@ import ChartTopGastos from "./charts/ChartTopGastos";
 interface GraficasSectionProps {
   citas: Cita[];
   gastos: Gasto[];
+  comisiones?: Comision[];
   salonColor: string;
   comisionTarjeta?: number;
 }
+
+// Default estable para no invalidar useMemo en cada render
+const SIN_COMISIONES: Comision[] = [];
 
 type MainTab = "mensual" | "anual";
 type ChartView = "evolucion" | "servicios" | "metodo" | "gastos";
@@ -34,6 +38,7 @@ const VIEWS: { id: ChartView; label: string }[] = [
 export default function GraficasSection({
   citas,
   gastos,
+  comisiones = SIN_COMISIONES,
   salonColor,
   comisionTarjeta = 0,
 }: GraficasSectionProps) {
@@ -57,10 +62,10 @@ export default function GraficasSection({
   // Calculate chart data based on tab
   const datos: DatosGraficas = useMemo(() => {
     if (mainTab === "mensual") {
-      return calcularDatosGraficas(citas, gastos, selectedMes.year, selectedMes.month, comisionTarjeta);
+      return calcularDatosGraficas(citas, gastos, comisiones, selectedMes.year, selectedMes.month, comisionTarjeta);
     }
-    return calcularDatosGraficasAnual(citas, gastos, selectedAnio, comisionTarjeta);
-  }, [mainTab, citas, gastos, selectedMes, selectedAnio, comisionTarjeta]);
+    return calcularDatosGraficasAnual(citas, gastos, comisiones, selectedAnio, comisionTarjeta);
+  }, [mainTab, citas, gastos, comisiones, selectedMes, selectedAnio, comisionTarjeta]);
 
   const periodLabel = mainTab === "mensual" ? selectedMes.label : String(selectedAnio);
 

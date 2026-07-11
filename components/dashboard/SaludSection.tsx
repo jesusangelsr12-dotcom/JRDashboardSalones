@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { Salon, Cita, Gasto } from "@/lib/types";
+import type { Salon, Cita, Gasto, Comision } from "@/lib/types";
 import { formatMoney, costoNeto } from "@/lib/calculations";
 import {
   calcularSalud,
@@ -21,6 +21,7 @@ interface SaludSectionProps {
   salon: Salon;
   citas: Cita[];
   gastos: Gasto[];
+  comisiones?: Comision[];
   salonColor: string;
 }
 
@@ -35,7 +36,10 @@ function semanaKey(d = new Date()): string {
 
 const CONTACTADAS_VERSION = 1;
 
-export default function SaludSection({ salon, citas, gastos, salonColor }: SaludSectionProps) {
+// Default estable para no invalidar useMemo en cada render
+const SIN_COMISIONES: Comision[] = [];
+
+export default function SaludSection({ salon, citas, gastos, comisiones = SIN_COMISIONES, salonColor }: SaludSectionProps) {
   // "Hoy" se refresca al recuperar foco (igual que el refetch de datos), para
   // que los KPIs por día no queden corridos si la app queda abierta tras la medianoche.
   const [hoy, setHoy] = useState(() => new Date());
@@ -93,12 +97,12 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
   // Un solo pase calcula el periodo actual y el previo (para el delta, solo en modo mes).
   const { salud, saludPrev } = useMemo(() => {
     const com = salon.comisionTarjeta ?? 0;
-    const cur = calcularSalud(citas, gastos, salon.gastosFijos, salon.bolsas, year, month, com, hoy, FACTOR_RIESGO_DEFAULT, modo);
+    const cur = calcularSalud(citas, gastos, comisiones, salon.gastosFijos, salon.bolsas, year, month, com, hoy, FACTOR_RIESGO_DEFAULT, modo);
     if (modo === "ano") return { salud: cur, saludPrev: cur };
     const dPrev = new Date(year, month - 1, 1);
-    const prev = calcularSalud(citas, gastos, salon.gastosFijos, salon.bolsas, dPrev.getFullYear(), dPrev.getMonth(), com, hoy, FACTOR_RIESGO_DEFAULT, "mes");
+    const prev = calcularSalud(citas, gastos, comisiones, salon.gastosFijos, salon.bolsas, dPrev.getFullYear(), dPrev.getMonth(), com, hoy, FACTOR_RIESGO_DEFAULT, "mes");
     return { salud: cur, saludPrev: prev };
-  }, [citas, gastos, salon, year, month, hoy, modo]);
+  }, [citas, gastos, comisiones, salon, year, month, hoy, modo]);
 
   const esAnio = modo === "ano";
   const g = colorSemaforo(salud.semaforoGlobal);
@@ -341,6 +345,7 @@ export default function SaludSection({ salon, citas, gastos, salonColor }: Salud
             <EstadoResultados
               citas={citas}
               gastos={gastos}
+              comisiones={comisiones}
               gastosFijos={salon.gastosFijos}
               comisionTarjeta={salon.comisionTarjeta ?? 0}
               salonColor={salonColor}

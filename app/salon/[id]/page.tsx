@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
-import type { Salon, Cita, Gasto, GastoAdmin, MovimientoBolsa, ResumenSemanal as ResumenType } from "@/lib/types";
+import type { Salon, Cita, Gasto, Comision, GastoAdmin, MovimientoBolsa, ResumenSemanal as ResumenType } from "@/lib/types";
 import { getSalon, getAcumulados, getGastosAdmin, getMovimientosBolsa } from "@/lib/store";
 import { fetchSalonData } from "@/lib/sheets";
 import { calcularResumenSemanal } from "@/lib/calculations";
@@ -23,6 +23,7 @@ export default function SalonDashboard() {
   const [salon, setSalon] = useState<Salon | null>(null);
   const [citas, setCitas] = useState<Cita[]>([]);
   const [gastos, setGastos] = useState<Gasto[]>([]);
+  const [comisiones, setComisiones] = useState<Comision[]>([]);
   const [resumen, setResumen] = useState<ResumenType | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("resumen");
   const [loading, setLoading] = useState(true);
@@ -79,16 +80,18 @@ export default function SalonDashboard() {
 
       let sheetCitas: Cita[] = [];
       let sheetGastos: Gasto[] = [];
+      let sheetComisiones: Comision[] = [];
 
       // Fetch from Sheets if valid ID
       if (salon.sheetId && !salon.sheetId.startsWith("TU_SHEET_ID")) {
         try {
-          const { citas: c, gastos: g } = await fetchSalonData(salon.sheetId);
+          const { citas: c, gastos: g, comisiones: com } = await fetchSalonData(salon.sheetId);
           sheetCitas = c;
           sheetGastos = g.map((gasto) => ({
             ...gasto,
             source: "sheets" as const,
           }));
+          sheetComisiones = com;
         } catch (err) {
           setError("No se pudieron cargar los datos de Sheets. Verifica el Sheet ID y la API key.");
         }
@@ -99,6 +102,7 @@ export default function SalonDashboard() {
 
       setCitas(allCitas);
       setGastos(allGastos);
+      setComisiones(sheetComisiones);
 
       // Fetch movimientos de bolsa
       const movs = await getMovimientosBolsa(salon.id);
@@ -106,7 +110,7 @@ export default function SalonDashboard() {
 
       const acumulados = await getAcumulados(salon.id);
       const r = calcularResumenSemanal(
-        allCitas, allGastos, salon.bolsas, salon.gastosFijos,
+        allCitas, allGastos, sheetComisiones, salon.bolsas, salon.gastosFijos,
         acumulados, salon.bolsaDefaultGastosId, salon.comisionTarjeta ?? 0
       );
       setResumen(r);
@@ -114,7 +118,7 @@ export default function SalonDashboard() {
       setError("Error cargando datos.");
       const acumulados = await getAcumulados(salon.id);
       const r = calcularResumenSemanal(
-        [], [], salon.bolsas, salon.gastosFijos,
+        [], [], [], salon.bolsas, salon.gastosFijos,
         acumulados, salon.bolsaDefaultGastosId, salon.comisionTarjeta ?? 0
       );
       setResumen(r);
@@ -194,6 +198,7 @@ export default function SalonDashboard() {
               movimientos={movimientos}
               gastosFijos={salon.gastosFijos}
               gastos={gastos}
+              comisiones={comisiones}
             />
           )}
 
@@ -204,6 +209,7 @@ export default function SalonDashboard() {
               salonColor={salon.color}
               citas={citas}
               gastos={gastos}
+              comisiones={comisiones}
               movimientos={movimientos}
               onCierreCompleto={loadData}
               onMovimiento={() => setShowMovimientoModal(true)}
@@ -214,6 +220,7 @@ export default function SalonDashboard() {
             <GraficasSection
               citas={citas}
               gastos={gastos}
+              comisiones={comisiones}
               salonColor={salon.color}
               comisionTarjeta={salon.comisionTarjeta ?? 0}
             />
@@ -236,6 +243,7 @@ export default function SalonDashboard() {
               salon={salon}
               citas={citas}
               gastos={gastos}
+              comisiones={comisiones}
               salonColor={salon.color}
             />
           )}

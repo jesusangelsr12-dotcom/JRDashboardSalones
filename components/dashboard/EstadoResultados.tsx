@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { Cita, Gasto, GastoFijo } from "@/lib/types";
+import type { Cita, Gasto, Comision, GastoFijo } from "@/lib/types";
 import {
   formatMoney,
   costoNeto,
@@ -14,6 +14,7 @@ import {
 interface EstadoResultadosProps {
   citas: Cita[];
   gastos: Gasto[];
+  comisiones?: Comision[];
   gastosFijos: GastoFijo[];
   comisionTarjeta: number;
   salonColor: string;
@@ -25,6 +26,7 @@ type Modo = "mes" | "semana" | "anual";
 export default function EstadoResultados({
   citas,
   gastos,
+  comisiones = [],
   gastosFijos,
   comisionTarjeta,
   salonColor,
@@ -85,6 +87,7 @@ export default function EstadoResultados({
   const estado = useMemo(() => {
     let citasPeriodo: Cita[];
     let gastosPeriodo: Gasto[];
+    let comisionesPeriodo: Comision[];
     let gastosFijosMonto: number;
     let periodoLabel: string;
 
@@ -93,6 +96,7 @@ export default function EstadoResultados({
       const fin = getFinMes(selectedMes.year, selectedMes.month);
       citasPeriodo = citas.filter((c) => c.fecha >= inicio && c.fecha <= fin);
       gastosPeriodo = gastos.filter((g) => g.fecha >= inicio && g.fecha <= fin);
+      comisionesPeriodo = comisiones.filter((c) => c.fecha >= inicio && c.fecha <= fin);
       // Monthly: use monthly amounts directly, weekly * 4
       gastosFijosMonto = gastosFijos.reduce((sum, gf) => {
         return sum + (gf.frecuencia === "mensual" ? gf.monto : gf.monto * 4);
@@ -103,6 +107,7 @@ export default function EstadoResultados({
       const fin = new Date(selectedSem.domingoISO + "T23:59:59.999");
       citasPeriodo = citas.filter((c) => c.fecha >= inicio && c.fecha <= fin);
       gastosPeriodo = gastos.filter((g) => g.fecha >= inicio && g.fecha <= fin);
+      comisionesPeriodo = comisiones.filter((c) => c.fecha >= inicio && c.fecha <= fin);
       // Weekly: monthly / 4, weekly as-is
       gastosFijosMonto = gastosFijos.reduce((sum, gf) => {
         return sum + (gf.frecuencia === "semanal" ? gf.monto : gf.monto / 4);
@@ -113,6 +118,7 @@ export default function EstadoResultados({
       const fin = new Date(selectedAnio, 11, 31, 23, 59, 59, 999);
       citasPeriodo = citas.filter((c) => c.fecha >= inicio && c.fecha <= fin);
       gastosPeriodo = gastos.filter((g) => g.fecha >= inicio && g.fecha <= fin);
+      comisionesPeriodo = comisiones.filter((c) => c.fecha >= inicio && c.fecha <= fin);
       // Prorate fixed expenses: calculate actual weeks elapsed
       const esAnioActual = selectedAnio === hoy.getFullYear();
       const mesesTranscurridos = esAnioActual ? hoy.getMonth() + 1 : 12;
@@ -138,7 +144,8 @@ export default function EstadoResultados({
     }, 0);
     const ingresosNetos = ingresosBrutos - comisionTotal;
     const gastosVariables = gastosPeriodo.reduce((sum, g) => sum + g.monto, 0);
-    const utilidadOperativa = ingresosNetos - gastosFijosMonto - gastosVariables;
+    const comisionesTrabajadoras = comisionesPeriodo.reduce((sum, c) => sum + c.monto, 0);
+    const utilidadOperativa = ingresosNetos - gastosFijosMonto - comisionesTrabajadoras - gastosVariables;
     const margenOperativo = ingresosNetos > 0 ? (utilidadOperativa / ingresosNetos) * 100 : 0;
 
     // Desglose por método de pago (neto)
@@ -175,11 +182,12 @@ export default function EstadoResultados({
       gastosFijosMonto,
       detalleGastosFijos,
       gastosVariables,
+      comisionesTrabajadoras,
       utilidadOperativa,
       margenOperativo,
       porMetodo,
     };
-  }, [citas, gastos, gastosFijos, comisionTarjeta, modo, mesIdx, semIdx, anioIdx, selectedMes, selectedSem, selectedAnio]);
+  }, [citas, gastos, comisiones, gastosFijos, comisionTarjeta, modo, mesIdx, semIdx, anioIdx, selectedMes, selectedSem, selectedAnio]);
 
   if (!estado) return null;
 
@@ -278,6 +286,13 @@ export default function EstadoResultados({
             <SubRow key={gf.nombre || i} label={gf.nombre || "Sin nombre"} value={gf.monto} />
           ))}
         </div>
+
+        {/* Comisiones trabajadoras */}
+        {estado.comisionesTrabajadoras > 0 && (
+          <div className="mb-2 mt-3">
+            <Row label="(-) Comisiones trabajadoras" value={-estado.comisionesTrabajadoras} negative />
+          </div>
+        )}
 
         {/* Gastos variables */}
         <div className="mb-3 mt-3">

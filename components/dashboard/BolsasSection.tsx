@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { ResumenSemanal, CierreSemana, Salon, Cita, Gasto, SemanaDetectada, MovimientoBolsa, GastoFijo } from "@/lib/types";
+import type { ResumenSemanal, CierreSemana, Salon, Cita, Gasto, Comision, SemanaDetectada, MovimientoBolsa, GastoFijo } from "@/lib/types";
 import {
   formatMoney,
   getLunesDeSemana,
@@ -13,12 +13,17 @@ import { addCierre, getAcumulados, saveAcumulados, getCierres } from "@/lib/stor
 import BolsaCard from "./BolsaCard";
 import ResumenMetodoPago from "./ResumenMetodoPago";
 
+// Default estable: un [] inline crearía una referencia nueva por render y
+// dispararía en bucle el useEffect de auto-cierre que depende de comisiones.
+const SIN_COMISIONES: Comision[] = [];
+
 interface BolsasSectionProps {
   resumen: ResumenSemanal;
   salon: Salon;
   salonColor: string;
   citas: Cita[];
   gastos: Gasto[];
+  comisiones?: Comision[];
   movimientos: MovimientoBolsa[];
   onCierreCompleto: () => void;
   onMovimiento: () => void;
@@ -65,6 +70,11 @@ function buildWhatsAppText(
     lines.push(`Total gastos fijos: ${formatMoney(totalFijos)}`);
   }
 
+  if (resumen.comisiones > 0) {
+    lines.push("");
+    lines.push(`💇‍♀️ Comisiones trabajadoras: ${formatMoney(resumen.comisiones)}`);
+  }
+
   return lines.join("\n");
 }
 
@@ -74,6 +84,7 @@ export default function BolsasSection({
   salonColor,
   citas,
   gastos,
+  comisiones = SIN_COMISIONES,
   movimientos,
   onCierreCompleto,
   onMovimiento,
@@ -94,7 +105,7 @@ export default function BolsasSection({
       const lunesActual = getLunesDeSemana(hoy).toISOString().split("T")[0];
 
       const detected = detectarSemanas(
-        citas, gastos, salon.gastosFijos, cierres, salon.bolsaDefaultGastosId, salon.comisionTarjeta ?? 0
+        citas, gastos, comisiones, salon.gastosFijos, cierres, salon.bolsaDefaultGastosId, salon.comisionTarjeta ?? 0
       );
 
       const pendientes = detected.filter(
@@ -110,7 +121,7 @@ export default function BolsasSection({
 
         const cierresActualizados = await getCierres(salon.id);
         const detectedActualizados = detectarSemanas(
-          citas, gastos, salon.gastosFijos, cierresActualizados, salon.bolsaDefaultGastosId, salon.comisionTarjeta ?? 0
+          citas, gastos, comisiones, salon.gastosFijos, cierresActualizados, salon.bolsaDefaultGastosId, salon.comisionTarjeta ?? 0
         );
         setSemanas(detectedActualizados.reverse());
         setCierresHistorial([...cierresActualizados].reverse());
@@ -121,11 +132,11 @@ export default function BolsasSection({
       }
     }
     loadAndAutoClose();
-  }, [salon, citas, gastos]);
+  }, [salon, citas, gastos, comisiones]);
 
   const cerrarSemanaEspecificaSilent = async (semana: SemanaDetectada) => {
     const datos = calcularResumenParaSemana(
-      citas, gastos, salon.gastosFijos,
+      citas, gastos, comisiones, salon.gastosFijos,
       semana.semanaInicio, semana.semanaFin,
       salon.bolsaDefaultGastosId, salon.comisionTarjeta ?? 0
     );
@@ -137,7 +148,7 @@ export default function BolsasSection({
       semanaInicio: semana.semanaInicio,
       semanaFin: semana.semanaFin,
       ingresos: datos.ingresos,
-      gastos: datos.gastosFijos,
+      gastos: datos.gastosFijos + datos.comisiones,
       libre,
       bolsas: salon.bolsas.map((b) => ({
         bolsaId: b.id,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { ResumenSemanal as ResumenType, MovimientoBolsa, Gasto, GastoFijo } from "@/lib/types";
+import type { ResumenSemanal as ResumenType, MovimientoBolsa, Gasto, GastoFijo, Comision } from "@/lib/types";
 import {
   formatMoney,
   calcularGastoProductosMes,
@@ -19,7 +19,12 @@ interface ResumenSemanalProps {
   movimientos?: MovimientoBolsa[];
   gastosFijos?: GastoFijo[];
   gastos?: Gasto[];
+  comisiones?: Comision[];
 }
+
+// Defaults estables para no invalidar useMemo en cada render
+const SIN_GASTOS: Gasto[] = [];
+const SIN_COMISIONES: Comision[] = [];
 
 const SEMAFORO_COLORS: Record<string, string> = {
   verde: "#16a34a",
@@ -32,14 +37,20 @@ export default function ResumenSemanal({
   salonColor,
   movimientos = [],
   gastosFijos = [],
-  gastos = [],
+  gastos = SIN_GASTOS,
+  comisiones = SIN_COMISIONES,
 }: ResumenSemanalProps) {
-  const [detalleGastos, setDetalleGastos] = useState<"fijos" | "bolsas" | null>(null);
+  const [detalleGastos, setDetalleGastos] = useState<"fijos" | "bolsas" | "comisiones" | null>(null);
 
   const gastosSemana = useMemo(() => {
     const hoy = new Date();
     return enRango(gastos, getLunesDeSemana(hoy), getDomingoDeSemana(hoy));
   }, [gastos]);
+
+  const comisionesSemana = useMemo(() => {
+    const hoy = new Date();
+    return enRango(comisiones, getLunesDeSemana(hoy), getDomingoDeSemana(hoy));
+  }, [comisiones]);
 
   const kpiProductos = useMemo(() => {
     const hoy = new Date();
@@ -71,13 +82,23 @@ export default function ResumenSemanal({
           onClick={() => setDetalleGastos("fijos")}
         />
 
-        {/* Gastos variables (info, no restan de libre) */}
+        {/* Comisiones trabajadoras (restan de libre) */}
         <KpiCard
-          label="Gastos en bolsas"
-          value={resumen.gastosVariables}
+          label="Comisiones"
+          value={resumen.comisiones}
           negative
-          onClick={() => setDetalleGastos("bolsas")}
+          onClick={() => setDetalleGastos("comisiones")}
         />
+
+        {/* Gastos variables (info, no restan de libre) */}
+        <div className="col-span-2">
+          <KpiCard
+            label="Gastos en bolsas"
+            value={resumen.gastosVariables}
+            negative
+            onClick={() => setDetalleGastos("bolsas")}
+          />
+        </div>
 
         {/* Dinero libre — full width */}
         <div className="col-span-2 relative overflow-hidden rounded-card border-2 p-5"
@@ -111,7 +132,7 @@ export default function ResumenSemanal({
 
           {/* Breakdown label */}
           <p className="relative text-[11px] font-mono text-text-secondary mt-2">
-            Ingresos − Gastos fijos
+            Ingresos − Gastos fijos − Comisiones
           </p>
         </div>
 
@@ -163,6 +184,7 @@ export default function ResumenSemanal({
         tipo={detalleGastos}
         gastosFijos={gastosFijos}
         gastosSemana={gastosSemana}
+        comisionesSemana={comisionesSemana}
         salonColor={salonColor}
       />
     </section>

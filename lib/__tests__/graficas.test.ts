@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { calcularDatosGraficas, calcularDatosGraficasAnual } from "../calculations";
-import type { Cita, Gasto, MetodoPago, ServicioItem } from "../types";
+import type { Cita, Gasto, Comision, MetodoPago, ServicioItem } from "../types";
 
 function cita(clienta: string, dia: number, servicios: ServicioItem[], metodoPago: MetodoPago = "Efectivo"): Cita {
   const costo = servicios.reduce((s, x) => s + x.costo, 0);
@@ -20,7 +20,11 @@ describe("calcularDatosGraficas — números de las gráficas", () => {
     cita("Bea", 9, [serv("Tinte", 500), prod("Shampoo", 100)], "Transferencia"),
   ];
   const gastos: Gasto[] = [gasto(3, "Luz", 800), gasto(10, "Luz", 200), gasto(11, "Productos", 500)];
-  const d = calcularDatosGraficas(citas, gastos, 2026, 4, 0);
+  const comisiones: Comision[] = [
+    { fecha: new Date(2026, 4, 9, 12), clienta: "Ana", trabajadora: "Jaqui", item: "Corte", tipo: "servicio", costo: 200, porcentaje: 10, monto: 20 },
+    { fecha: new Date(2026, 4, 9, 12), clienta: "Bea", trabajadora: "Jaqui", item: "Tinte", tipo: "servicio", costo: 500, porcentaje: 10, monto: 50 },
+  ];
+  const d = calcularDatosGraficas(citas, gastos, comisiones, 2026, 4, 0);
 
   it("top servicios: agrega por nombre, ordenado por total", () => {
     expect(d.topServicios[0]).toEqual({ nombre: "Tinte", cantidad: 1, total: 500 });
@@ -35,6 +39,11 @@ describe("calcularDatosGraficas — números de las gráficas", () => {
   it("top gastos: Luz agrupado (2 registros, 1000), ordenado por total", () => {
     expect(d.topGastos[0]).toEqual({ descripcion: "Luz", cantidad: 2, total: 1000 });
     expect(d.topGastos.find((g) => g.descripcion === "Productos")?.total).toBe(500);
+  });
+
+  it("top gastos: comisiones entran agrupadas por trabajadora", () => {
+    const com = d.topGastos.find((g) => g.descripcion === "Comisiones · Jaqui");
+    expect(com).toEqual({ descripcion: "Comisiones · Jaqui", cantidad: 2, total: 70 });
   });
 
   it("distribución por método de pago suma por método", () => {
@@ -62,7 +71,7 @@ describe("calcularDatosGraficasAnual", () => {
       { fecha: new Date(2026, 0, 5), timestamp: "", clienta: "Ana", servicios: [serv("Corte", 100)], costo: 100, metodoPago: "Efectivo" },
       { fecha: new Date(2026, 6, 5), timestamp: "", clienta: "Bea", servicios: [serv("Corte", 300)], costo: 300, metodoPago: "Efectivo" },
     ];
-    const d = calcularDatosGraficasAnual(citas, [], 2026, 0);
+    const d = calcularDatosGraficasAnual(citas, [], [], 2026, 0);
     const total = d.distribucionMetodo.reduce((s, m) => s + m.total, 0);
     expect(total).toBe(400);
   });

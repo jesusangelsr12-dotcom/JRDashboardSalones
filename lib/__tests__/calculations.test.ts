@@ -7,7 +7,7 @@ import {
   formatMoney,
   detectarSemanas,
 } from "../calculations";
-import type { Cita, Gasto, Bolsa, GastoFijo, CierreSemana } from "../types";
+import type { Cita, Gasto, Comision, Bolsa, GastoFijo, CierreSemana } from "../types";
 
 // ── Helpers ──
 
@@ -30,6 +30,20 @@ function makeGasto(overrides: Partial<Gasto> = {}): Gasto {
     descripcion: "Shampoo",
     monto: 100,
     metodoPago: "Efectivo",
+    ...overrides,
+  };
+}
+
+function makeComision(overrides: Partial<Comision> = {}): Comision {
+  return {
+    fecha: new Date("2026-02-23T10:00:00"),
+    clienta: "Test",
+    trabajadora: "Jaqui",
+    item: "Corte",
+    tipo: "servicio",
+    costo: 500,
+    porcentaje: 10,
+    monto: 50,
     ...overrides,
   };
 }
@@ -101,7 +115,7 @@ describe("calcularResumenSemanal", () => {
     const acumulados = { b1: 1000, b2: 500 };
 
     const resumen = calcularResumenSemanal(
-      citas, [], bolsas, gastosFijos, acumulados, null, 0, HOY
+      citas, [], [], bolsas, gastosFijos, acumulados, null, 0, HOY
     );
 
     expect(resumen.ingresos).toBe(5000);
@@ -115,7 +129,7 @@ describe("calcularResumenSemanal", () => {
     const acumulados = { b1: 1000, b2: 500 };
 
     const resumen = calcularResumenSemanal(
-      citas, gastos, bolsas, gastosFijos, acumulados, null, 0, HOY
+      citas, gastos, [], bolsas, gastosFijos, acumulados, null, 0, HOY
     );
 
     const bolsaB1 = resumen.bolsas.find((b) => b.bolsaId === "b1");
@@ -128,7 +142,7 @@ describe("calcularResumenSemanal", () => {
     const acumulados = { b1: 1000, b2: 500 };
 
     const resumen = calcularResumenSemanal(
-      citas, gastos, bolsas, gastosFijos, acumulados, "b2", 0, HOY // default bolsa
+      citas, gastos, [], bolsas, gastosFijos, acumulados, "b2", 0, HOY // default bolsa
     );
 
     const bolsaB2 = resumen.bolsas.find((b) => b.bolsaId === "b2");
@@ -141,7 +155,7 @@ describe("calcularResumenSemanal", () => {
     const acumulados = { b1: 1000, b2: 500 };
 
     const resumen = calcularResumenSemanal(
-      citas, gastos, bolsas, gastosFijos, acumulados, null, 0, HOY
+      citas, gastos, [], bolsas, gastosFijos, acumulados, null, 0, HOY
     );
 
     const totalGastosAsignados = resumen.bolsas.reduce((s, b) => s + b.gastosAsignados, 0);
@@ -153,7 +167,7 @@ describe("calcularResumenSemanal", () => {
     const acumulados = { b1: 0, b2: 0 };
 
     const resumen = calcularResumenSemanal(
-      citas, [], bolsas, gastosFijos, acumulados, null, 0, HOY
+      citas, [], [], bolsas, gastosFijos, acumulados, null, 0, HOY
     );
 
     // libre = 3000
@@ -168,7 +182,7 @@ describe("calcularResumenSemanal", () => {
     const acumulados = { b1: 0, b2: 0 };
 
     const resumen = calcularResumenSemanal(
-      citas, [], bolsas, gastosFijos, acumulados, null, 0, HOY
+      citas, [], [], bolsas, gastosFijos, acumulados, null, 0, HOY
     );
 
     expect(resumen.libre).toBeLessThan(0);
@@ -181,11 +195,46 @@ describe("calcularResumenSemanal", () => {
     const acumulados = { b1: 5000, b2: 3000 };
 
     const resumen = calcularResumenSemanal(
-      [], [], bolsas, gastosFijos, acumulados, null, 0, HOY
+      [], [], [], bolsas, gastosFijos, acumulados, null, 0, HOY
     );
 
     expect(resumen.bolsas.find((b) => b.bolsaId === "b1")?.acumulado).toBe(5000);
     expect(resumen.bolsas.find((b) => b.bolsaId === "b2")?.acumulado).toBe(3000);
+  });
+
+  it("resta comisiones de trabajadoras del libre", () => {
+    // Renta 8000/4 = 2000 semanal; comisiones 250 + 30 = 280
+    const citas = [makeCita({ costo: 5000 })];
+    const comisiones = [
+      makeComision({ monto: 250 }),
+      makeComision({ monto: 30, item: "Corte combo" }),
+    ];
+    const acumulados = { b1: 0, b2: 0 };
+
+    const resumen = calcularResumenSemanal(
+      citas, [], comisiones, bolsas, gastosFijos, acumulados, null, 0, HOY
+    );
+
+    expect(resumen.comisiones).toBe(280);
+    expect(resumen.libre).toBe(2720); // 5000 - 2000 - 280
+    // El reparto a bolsas usa el libre neto de comisiones
+    const b1 = resumen.bolsas.find((b) => b.bolsaId === "b1");
+    expect(b1?.montoSemana).toBe(1632); // 2720 * 60%
+  });
+
+  it("ignora comisiones fuera de la semana actual", () => {
+    const citas = [makeCita({ costo: 5000 })];
+    const comisiones = [
+      makeComision({ fecha: new Date("2026-02-10T10:00:00"), monto: 999 }), // semana anterior
+    ];
+    const acumulados = { b1: 0, b2: 0 };
+
+    const resumen = calcularResumenSemanal(
+      citas, [], comisiones, bolsas, gastosFijos, acumulados, null, 0, HOY
+    );
+
+    expect(resumen.comisiones).toBe(0);
+    expect(resumen.libre).toBe(3000); // 5000 - 2000
   });
 
   it("tracks porMetodo correctly", () => {
@@ -197,7 +246,7 @@ describe("calcularResumenSemanal", () => {
     const acumulados = { b1: 0, b2: 0 };
 
     const resumen = calcularResumenSemanal(
-      citas, [], bolsas, gastosFijos, acumulados, null, 0, HOY
+      citas, [], [], bolsas, gastosFijos, acumulados, null, 0, HOY
     );
 
     expect(resumen.porMetodo.Efectivo).toBe(1000);
@@ -217,7 +266,7 @@ describe("calcularResumenParaSemana", () => {
     ];
 
     const result = calcularResumenParaSemana(
-      citas, gastos, gastosFijos,
+      citas, gastos, [], gastosFijos,
       "2026-02-23", "2026-03-01", "b2"
     );
 
@@ -229,11 +278,24 @@ describe("calcularResumenParaSemana", () => {
     const gastos = [makeGasto({ monto: 200 })];
 
     const result = calcularResumenParaSemana(
-      [], gastos, gastosFijos,
+      [], gastos, [], gastosFijos,
       "2026-02-23", "2026-03-01", null
     );
 
     expect(Object.keys(result.gastosPorBolsa).length).toBe(0);
+  });
+
+  it("resta comisiones del libre de la semana", () => {
+    const citas = [makeCita({ costo: 10000 })];
+    const comisiones = [makeComision({ monto: 500 })];
+
+    const result = calcularResumenParaSemana(
+      citas, [], comisiones, gastosFijos,
+      "2026-02-23", "2026-03-01", null
+    );
+
+    expect(result.comisiones).toBe(500);
+    expect(result.libre).toBe(7500); // 10000 - 2000 - 500
   });
 
   it("filters by date range correctly", () => {
@@ -243,7 +305,7 @@ describe("calcularResumenParaSemana", () => {
     ];
 
     const result = calcularResumenParaSemana(
-      citas, [], gastosFijos,
+      citas, [], [], gastosFijos,
       "2026-02-23", "2026-03-01", null
     );
 
@@ -260,7 +322,7 @@ describe("detectarSemanas", () => {
       makeCita({ fecha: new Date("2026-02-16T10:00:00") }),
     ];
 
-    const semanas = detectarSemanas(citas, [], gastosFijos, [], null);
+    const semanas = detectarSemanas(citas, [], [], gastosFijos, [], null);
 
     expect(semanas.length).toBeGreaterThanOrEqual(2);
   });
@@ -279,7 +341,7 @@ describe("detectarSemanas", () => {
       },
     ];
 
-    const semanas = detectarSemanas(citas, [], gastosFijos, cierres, null);
+    const semanas = detectarSemanas(citas, [], [], gastosFijos, cierres, null);
     const semanaCerrada = semanas.find((s) => s.semanaInicio === "2026-02-16");
 
     expect(semanaCerrada?.cerrada).toBe(true);

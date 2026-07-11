@@ -1,6 +1,7 @@
 import type {
   Cita,
   Gasto,
+  Comision,
   Bolsa,
   GastoFijo,
   CierreSemana,
@@ -85,12 +86,14 @@ export function formatMoneyFull(amount: number): string {
 }
 
 // ── Resumen Semanal ──
-// CAMBIO: libre = ingresos - gastosFijos (gastos variables NO restan de ingresos)
+// CAMBIO: libre = ingresos - gastosFijos - comisiones (gastos variables NO restan de ingresos)
 // Los gastos variables restan a la bolsa asignada
+// Las comisiones a trabajadoras (hoja "Comisiones") se restan como gasto antes del libre
 
 export function calcularResumenSemanal(
   citas: Cita[],
   gastos: Gasto[],
+  comisiones: Comision[],
   bolsas: Bolsa[],
   gastosFijos: GastoFijo[],
   acumulados: Record<string, number>,
@@ -116,8 +119,12 @@ export function calcularResumenSemanal(
     return sum + (gf.frecuencia === "semanal" ? gf.monto : gf.monto / 4);
   }, 0);
 
-  // NUEVO: libre = ingresos - gastosFijos solamente
-  const totalGastos = gastosFijosSemana;
+  // Comisiones a trabajadoras de la semana
+  const comisionesSemana = enRango(comisiones, lunesSemana, domingoSemana)
+    .reduce((sum, c) => sum + c.monto, 0);
+
+  // libre = ingresos - gastosFijos - comisiones
+  const totalGastos = gastosFijosSemana + comisionesSemana;
   const libre = ingresos - totalGastos;
 
   // Desglose por método de pago
@@ -150,6 +157,7 @@ export function calcularResumenSemanal(
     ingresos,
     gastosVariables,
     gastosFijos: gastosFijosSemana,
+    comisiones: comisionesSemana,
     totalGastos,
     libre,
     porMetodo,
@@ -162,12 +170,13 @@ export function calcularResumenSemanal(
 export function calcularResumenParaSemana(
   citas: Cita[],
   gastos: Gasto[],
+  comisiones: Comision[],
   gastosFijos: GastoFijo[],
   lunesISO: string,
   domingoISO: string,
   bolsaDefaultGastosId: string | null,
   comisionTarjeta: number = 0
-): { ingresos: number; gastosVariables: number; gastosFijos: number; libre: number; gastosPorBolsa: Record<string, number> } {
+): { ingresos: number; gastosVariables: number; gastosFijos: number; comisiones: number; libre: number; gastosPorBolsa: Record<string, number> } {
   const inicio = new Date(lunesISO + "T00:00:00");
   const fin = new Date(domingoISO + "T23:59:59.999");
 
@@ -179,7 +188,8 @@ export function calcularResumenParaSemana(
   const gastosFijosSemana = gastosFijos.reduce((sum, gf) => {
     return sum + (gf.frecuencia === "semanal" ? gf.monto : gf.monto / 4);
   }, 0);
-  const libre = ingresos - gastosFijosSemana;
+  const comisionesSemana = enRango(comisiones, inicio, fin).reduce((sum, c) => sum + c.monto, 0);
+  const libre = ingresos - gastosFijosSemana - comisionesSemana;
 
   const gastosPorBolsa: Record<string, number> = {};
   gastosSemana.forEach((g) => {
@@ -189,7 +199,7 @@ export function calcularResumenParaSemana(
     }
   });
 
-  return { ingresos, gastosVariables, gastosFijos: gastosFijosSemana, libre, gastosPorBolsa };
+  return { ingresos, gastosVariables, gastosFijos: gastosFijosSemana, comisiones: comisionesSemana, libre, gastosPorBolsa };
 }
 
 // ── Detectar semanas con datos ──
@@ -197,6 +207,7 @@ export function calcularResumenParaSemana(
 export function detectarSemanas(
   citas: Cita[],
   gastos: Gasto[],
+  comisiones: Comision[],
   gastosFijos: GastoFijo[],
   cierres: CierreSemana[],
   bolsaDefaultGastosId: string | null,
@@ -227,7 +238,7 @@ export function detectarSemanas(
       const domingoISO = domingo.toISOString().split("T")[0];
 
       const datos = calcularResumenParaSemana(
-        citas, gastos, gastosFijos, lunesISO, domingoISO, bolsaDefaultGastosId, comisionTarjeta
+        citas, gastos, comisiones, gastosFijos, lunesISO, domingoISO, bolsaDefaultGastosId, comisionTarjeta
       );
 
       return {
@@ -237,6 +248,7 @@ export function detectarSemanas(
         ingresos: datos.ingresos,
         gastosVariables: datos.gastosVariables,
         gastosFijos: datos.gastosFijos,
+        comisiones: datos.comisiones,
         libre: datos.libre,
         cerrada: cierresSet.has(lunesISO),
       };
@@ -263,6 +275,7 @@ export function calcularIngresosMes(
 export function calcularDatosGraficas(
   citas: Cita[],
   gastos: Gasto[],
+  comisiones: Comision[],
   year: number,
   month: number,
   comisionTarjeta: number = 0
@@ -272,8 +285,9 @@ export function calcularDatosGraficas(
 
   const citasMes = enRango(citas, inicioMes, finMes);
   const gastosMes = enRango(gastos, inicioMes, finMes);
+  const comisionesMes = enRango(comisiones, inicioMes, finMes);
 
-  return _calcularGraficasInternas(citas, citasMes, gastosMes, year, month, comisionTarjeta);
+  return _calcularGraficasInternas(citas, citasMes, gastosMes, comisionesMes, year, month, comisionTarjeta);
 }
 
 // ── Datos para gráficas (año completo) ──
@@ -281,6 +295,7 @@ export function calcularDatosGraficas(
 export function calcularDatosGraficasAnual(
   citas: Cita[],
   gastos: Gasto[],
+  comisiones: Comision[],
   year: number,
   comisionTarjeta: number = 0
 ): DatosGraficas {
@@ -289,14 +304,16 @@ export function calcularDatosGraficasAnual(
 
   const citasAnio = enRango(citas, inicio, fin);
   const gastosAnio = enRango(gastos, inicio, fin);
+  const comisionesAnio = enRango(comisiones, inicio, fin);
 
-  return _calcularGraficasInternas(citas, citasAnio, gastosAnio, year, new Date().getMonth(), comisionTarjeta);
+  return _calcularGraficasInternas(citas, citasAnio, gastosAnio, comisionesAnio, year, new Date().getMonth(), comisionTarjeta);
 }
 
 function _calcularGraficasInternas(
   allCitas: Cita[],
   citasFiltradas: Cita[],
   gastosFiltrados: Gasto[],
+  comisionesFiltradas: Comision[],
   year: number,
   month: number,
   comisionTarjeta: number = 0
@@ -409,6 +426,15 @@ function _calcularGraficasInternas(
     gastoDescMap.set(desc, {
       cantidad: current.cantidad + 1,
       total: current.total + g.monto,
+    });
+  });
+  // Comisiones a trabajadoras: entran al ranking como gasto, agrupadas por trabajadora
+  comisionesFiltradas.forEach((c) => {
+    const desc = `Comisiones · ${c.trabajadora}`;
+    const current = gastoDescMap.get(desc) || { cantidad: 0, total: 0 };
+    gastoDescMap.set(desc, {
+      cantidad: current.cantidad + 1,
+      total: current.total + c.monto,
     });
   });
   const topGastos = Array.from(gastoDescMap.entries())

@@ -1,4 +1,4 @@
-import type { CitaRaw, GastoRaw, Cita, Gasto, ServicioItem, MetodoPago } from "./types";
+import type { CitaRaw, GastoRaw, ComisionRaw, Cita, Gasto, Comision, ServicioItem, MetodoPago } from "./types";
 
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
 const BASE_URL = "https://sheets.googleapis.com/v4/spreadsheets";
@@ -47,6 +47,16 @@ export async function fetchCitasRaw(sheetId: string): Promise<CitaRaw[]> {
 
 export async function fetchGastosRaw(sheetId: string): Promise<GastoRaw[]> {
   return fetchSheet<GastoRaw>(sheetId, "gastos");
+}
+
+// ── Fetch comisiones (hoja opcional: salones viejos pueden no tenerla) ──
+
+export async function fetchComisionesRaw(sheetId: string): Promise<ComisionRaw[]> {
+  try {
+    return await fetchSheet<ComisionRaw>(sheetId, "Comisiones");
+  } catch {
+    return [];
+  }
 }
 
 // ── Parseo de fecha ──
@@ -129,18 +139,37 @@ export function parseGastos(rawGastos: GastoRaw[]): Gasto[] {
     .filter((g) => g.monto > 0);
 }
 
+// ── Parsear comisiones completas ──
+
+export function parseComisiones(rawComisiones: ComisionRaw[]): Comision[] {
+  return rawComisiones
+    .map((raw) => ({
+      fecha: parseFecha(raw.fecha),
+      clienta: raw.clienta?.trim() || "Sin nombre",
+      trabajadora: raw.trabajadora?.trim() || "Sin nombre",
+      item: raw.item?.trim() || "Sin descripción",
+      tipo: (raw.tipo?.trim().toLowerCase() === "producto" ? "producto" : "servicio") as Comision["tipo"],
+      costo: Number(raw.costo_de_item) || 0,
+      porcentaje: Number(raw["comision_%"]) || 0,
+      monto: Number(raw.pago_de_comision) || 0,
+    }))
+    .filter((c) => c.monto > 0);
+}
+
 // ── Función principal: obtener todos los datos de un salón ──
 
 export async function fetchSalonData(
   sheetId: string
-): Promise<{ citas: Cita[]; gastos: Gasto[] }> {
-  const [citasRaw, gastosRaw] = await Promise.all([
+): Promise<{ citas: Cita[]; gastos: Gasto[]; comisiones: Comision[] }> {
+  const [citasRaw, gastosRaw, comisionesRaw] = await Promise.all([
     fetchCitasRaw(sheetId),
     fetchGastosRaw(sheetId),
+    fetchComisionesRaw(sheetId),
   ]);
 
   return {
     citas: parseCitas(citasRaw),
     gastos: parseGastos(gastosRaw),
+    comisiones: parseComisiones(comisionesRaw),
   };
 }
