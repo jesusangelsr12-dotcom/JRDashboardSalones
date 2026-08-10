@@ -17,6 +17,11 @@ import ResumenMetodoPago from "./ResumenMetodoPago";
 // dispararía en bucle el useEffect de auto-cierre que depende de comisiones.
 const SIN_COMISIONES: Comision[] = [];
 
+// Las bolsas solo consideran semanas de 2026 en adelante. La historia previa
+// (importada) puede vivir en la tabla de cierres para otras vistas, pero NO
+// alimenta el acumulado ni aparece en el historial de bolsas.
+const BOLSAS_SEMANA_MIN = "2026-01-01";
+
 interface BolsasSectionProps {
   resumen: ResumenSemanal;
   salon: Salon;
@@ -109,7 +114,7 @@ export default function BolsasSection({
       );
 
       const pendientes = detected.filter(
-        (s) => !s.cerrada && s.semanaInicio !== lunesActual && s.ingresos > 0
+        (s) => !s.cerrada && s.semanaInicio !== lunesActual && s.ingresos > 0 && s.semanaInicio >= BOLSAS_SEMANA_MIN
       );
 
       if (pendientes.length > 0) {
@@ -124,11 +129,11 @@ export default function BolsasSection({
           citas, gastos, comisiones, salon.gastosFijos, cierresActualizados, salon.bolsaDefaultGastosId, salon.comisionTarjeta ?? 0
         );
         setSemanas(detectedActualizados.reverse());
-        setCierresHistorial([...cierresActualizados].reverse());
+        setCierresHistorial(cierresActualizados.filter((c) => c.semanaInicio >= BOLSAS_SEMANA_MIN).reverse());
         onCierreCompleto();
       } else {
         setSemanas(detected.reverse());
-        setCierresHistorial([...cierres].reverse());
+        setCierresHistorial(cierres.filter((c) => c.semanaInicio >= BOLSAS_SEMANA_MIN).reverse());
       }
     }
     loadAndAutoClose();
