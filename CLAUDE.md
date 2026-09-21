@@ -24,10 +24,16 @@ Full knowledge base: `JR_CONSULTORIA_APP.md` (update with every significant chan
 
 ## Git
 
-- Production: `claude/main` (Vercel auto-deploy en jr-dashboard-salones.vercel.app)
-- Development: ramas `claude/*` por feature; al terminar, fast-forward a `claude/main`
-- Las ramas `main` y `claude/fix-vercel-production-branch-pj9gq` NO despliegan nada
-  (nombres históricos; Vercel solo construye pushes a `claude/main` y previews de features)
+- Production: `claude/fix-vercel-production-branch-pj9gq` (Production Branch real
+  configurada en Vercel Project Settings → Git; auto-deploy en jr-dashboard-salones.vercel.app).
+  Nombre histórico confuso, pero es la que Vercel realmente usa — verificado con
+  `target: "production"` en los deployments (2026-09-21).
+- Development: ramas `claude/*` por feature; al terminar, merge a
+  `claude/fix-vercel-production-branch-pj9gq` (no siempre es fast-forward puro:
+  puede requerir un merge commit si la rama de producción tiene commits propios).
+- `claude/main` NO es la rama de producción pese a su nombre — solo genera
+  previews. Antes de asumir cuál rama despliega, confirmar con Vercel
+  (`target: "production"` en `list_deployments` o `get_project`), no con el nombre.
 
 ## Environment
 
