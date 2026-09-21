@@ -21,6 +21,8 @@ export default function SalonConfigPage() {
   const [nombre, setNombre] = useState("");
   const [color, setColor] = useState("#2563EB");
   const [sheetId, setSheetId] = useState("");
+  const [dataSource, setDataSource] = useState<Salon["dataSource"]>("sheets");
+  const [neonSalonId, setNeonSalonId] = useState("");
   const [bolsas, setBolsas] = useState<Bolsa[]>([]);
   const [gastosFijos, setGastosFijos] = useState<GastoFijo[]>([]);
   const [bolsaDefaultGastosId, setBolsaDefaultGastosId] = useState<string | null>(null);
@@ -38,6 +40,8 @@ export default function SalonConfigPage() {
         setNombre(s.nombre);
         setColor(s.color);
         setSheetId(s.sheetId);
+        setDataSource(s.dataSource);
+        setNeonSalonId(s.neonSalonId || "");
         setBolsas(s.bolsas);
         setGastosFijos(s.gastosFijos);
         setBolsaDefaultGastosId(s.bolsaDefaultGastosId);
@@ -55,6 +59,8 @@ export default function SalonConfigPage() {
       nombre,
       color,
       sheetId,
+      dataSource,
+      neonSalonId: dataSource === "neon" ? neonSalonId.trim() : null,
       bolsas,
       gastosFijos,
       bolsaDefaultGastosId,
@@ -204,17 +210,65 @@ export default function SalonConfigPage() {
           </div>
 
           <div>
-            <label className="text-[12px] font-display text-text-secondary mb-1 block">
-              Google Sheet ID
+            <label className="text-[12px] font-display text-text-secondary mb-2 block">
+              Fuente de datos
             </label>
-            <input
-              type="text"
-              value={sheetId}
-              onChange={(e) => setSheetId(e.target.value)}
-              placeholder="1BxiM..."
-              className="w-full bg-bg border border-border rounded-[8px] px-3 py-2 text-[13px] font-mono text-text-primary placeholder:text-text-secondary/40 outline-none focus:border-text-secondary transition-colors"
-            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDataSource("sheets")}
+                className={`flex-1 py-2 rounded-[8px] text-[12px] font-display font-medium border transition-colors ${
+                  dataSource === "sheets"
+                    ? "text-white border-transparent"
+                    : "bg-bg border-border text-text-secondary"
+                }`}
+                style={dataSource === "sheets" ? { backgroundColor: color } : undefined}
+              >
+                Google Sheets
+              </button>
+              <button
+                onClick={() => setDataSource("neon")}
+                className={`flex-1 py-2 rounded-[8px] text-[12px] font-display font-medium border transition-colors ${
+                  dataSource === "neon"
+                    ? "text-white border-transparent"
+                    : "bg-bg border-border text-text-secondary"
+                }`}
+                style={dataSource === "neon" ? { backgroundColor: color } : undefined}
+              >
+                Base de datos (Neon)
+              </button>
+            </div>
           </div>
+
+          {dataSource === "sheets" ? (
+            <div>
+              <label className="text-[12px] font-display text-text-secondary mb-1 block">
+                Google Sheet ID
+              </label>
+              <input
+                type="text"
+                value={sheetId}
+                onChange={(e) => setSheetId(e.target.value)}
+                placeholder="1BxiM..."
+                className="w-full bg-bg border border-border rounded-[8px] px-3 py-2 text-[13px] font-mono text-text-primary placeholder:text-text-secondary/40 outline-none focus:border-text-secondary transition-colors"
+              />
+            </div>
+          ) : (
+            <div>
+              <label className="text-[12px] font-display text-text-secondary mb-1 block">
+                Neon Salon ID
+              </label>
+              <input
+                type="text"
+                value={neonSalonId}
+                onChange={(e) => setNeonSalonId(e.target.value)}
+                placeholder="fe431f09-608e-45e8-bd35-a355d3c0421d"
+                className="w-full bg-bg border border-border rounded-[8px] px-3 py-2 text-[13px] font-mono text-text-primary placeholder:text-text-secondary/40 outline-none focus:border-text-secondary transition-colors"
+              />
+              <p className="text-[11px] text-text-secondary/60 font-display mt-1">
+                ID del salón en la tabla &quot;salones&quot; de la base de datos Neon
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="text-[12px] font-display text-text-secondary mb-1 block">
@@ -350,11 +404,11 @@ export default function SalonConfigPage() {
       {bolsas.length > 0 && (
         <section className="mb-8">
           <h2 className="text-[11px] uppercase tracking-[0.08em] text-text-secondary font-display font-medium mb-3">
-            Gastos automáticos (Sheets)
+            Gastos automáticos ({dataSource === "neon" ? "Neon" : "Sheets"})
           </h2>
           <div className="bg-surface rounded-card border border-border p-4">
             <p className="text-[12px] text-text-secondary font-display mb-3">
-              Los gastos que llegan de Google Sheets se descontarán de esta bolsa:
+              Los gastos que llegan de {dataSource === "neon" ? "la base de datos" : "Google Sheets"} se descontarán de esta bolsa:
             </p>
             <select
               value={bolsaDefaultGastosId || ""}

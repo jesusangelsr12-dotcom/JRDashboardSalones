@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "./supabase";
-import type { Salon, Bolsa, GastoFijo, CierreSemana, GastoAdmin, MetodoPago, MovimientoBolsa, TipoMovimiento, OrigenMovimiento, NaturalezaBolsa, CategoriaGasto } from "./types";
+import type { Salon, Bolsa, GastoFijo, CierreSemana, GastoAdmin, MetodoPago, MovimientoBolsa, TipoMovimiento, OrigenMovimiento, NaturalezaBolsa, CategoriaGasto, DataSource } from "./types";
 
 // ── Helpers: mapear filas de Supabase → tipos de la app ──
 
@@ -9,6 +9,8 @@ interface SalonRow {
   nombre: string;
   color: string;
   sheet_id: string;
+  data_source: string | null;
+  neon_salon_id: string | null;
   bolsa_default_gastos_id: string | null;
   comision_tarjeta: number;
   created_at: string;
@@ -41,6 +43,8 @@ function mapSalon(row: SalonRow): Salon {
     nombre: row.nombre,
     color: row.color,
     sheetId: row.sheet_id,
+    dataSource: (row.data_source as DataSource) || "sheets",
+    neonSalonId: row.neon_salon_id || null,
     bolsaDefaultGastosId: row.bolsa_default_gastos_id || null,
     comisionTarjeta: row.comision_tarjeta ?? 0,
     bolsas: (row.bolsas || []).map((b) => ({
@@ -96,6 +100,8 @@ export async function addSalon(salon: Salon): Promise<boolean> {
     nombre: salon.nombre,
     color: salon.color,
     sheet_id: salon.sheetId,
+    data_source: salon.dataSource,
+    neon_salon_id: salon.neonSalonId,
     bolsa_default_gastos_id: null,
     comision_tarjeta: salon.comisionTarjeta ?? 0,
     created_at: salon.createdAt,
@@ -205,6 +211,8 @@ export async function updateSalon(updated: Salon): Promise<void> {
       nombre: updated.nombre,
       color: updated.color,
       sheet_id: updated.sheetId,
+      data_source: updated.dataSource,
+      neon_salon_id: updated.neonSalonId,
       bolsa_default_gastos_id: updated.bolsaDefaultGastosId,
       comision_tarjeta: updated.comisionTarjeta ?? 0,
     })
@@ -603,6 +611,8 @@ async function seedSalonesIfEmpty(): Promise<Salon[]> {
       nombre: "Martha Rdz Stylist",
       color: "#2563EB",
       sheetId: "TU_SHEET_ID_AQUI",
+      dataSource: "sheets",
+      neonSalonId: null,
       bolsas: crearBolsasPlantilla(),
       gastosFijos: [
         { id: uuidv4(), nombre: "Renta", monto: 8000, frecuencia: "mensual", categoria: "renta" },
@@ -618,6 +628,8 @@ async function seedSalonesIfEmpty(): Promise<Salon[]> {
       nombre: "Salón Elegance",
       color: "#059669",
       sheetId: "TU_SHEET_ID_2_AQUI",
+      dataSource: "sheets",
+      neonSalonId: null,
       bolsas: [
         { id: uuidv4(), nombre: "Operación", porcentaje: 50, color: "#8B5CF6", acumulado: 0, naturaleza: "reparto" },
         { id: uuidv4(), nombre: "Nómina", porcentaje: 25, color: "#EC4899", acumulado: 0, naturaleza: "gasto_operativo" },

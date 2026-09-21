@@ -17,6 +17,8 @@ export default function NuevoSalonPage() {
   const [nombre, setNombre] = useState("");
   const [color, setColor] = useState("#2563EB");
   const [sheetId, setSheetId] = useState("");
+  const [dataSource, setDataSource] = useState<Salon["dataSource"]>("sheets");
+  const [neonSalonId, setNeonSalonId] = useState("");
   const [step, setStep] = useState<1 | 2>(1);
   const [creating, setCreating] = useState(false);
 
@@ -29,6 +31,8 @@ export default function NuevoSalonPage() {
       nombre: nombre.trim(),
       color,
       sheetId: sheetId.trim(),
+      dataSource,
+      neonSalonId: dataSource === "neon" ? neonSalonId.trim() : null,
       bolsas: crearBolsasPlantilla(),
       gastosFijos: [],
       bolsaDefaultGastosId: null,
@@ -144,22 +148,65 @@ export default function NuevoSalonPage() {
 
       {step === 2 && (
         <section>
-          {/* Sheet ID */}
+          {/* Fuente de datos */}
           <div className="mb-6">
-            <label className="text-[11px] uppercase tracking-[0.08em] text-text-secondary font-display font-medium mb-2 block">
-              Google Sheet ID
+            <label className="text-[11px] uppercase tracking-[0.08em] text-text-secondary font-display font-medium mb-3 block">
+              Fuente de datos
             </label>
-            <input
-              type="text"
-              value={sheetId}
-              onChange={(e) => setSheetId(e.target.value)}
-              placeholder="1BxiMkKeFjR..."
-              autoFocus
-              className="w-full bg-surface border border-border rounded-card px-4 py-3.5 text-[14px] font-mono text-text-primary placeholder:text-text-secondary/40 outline-none focus:border-text-secondary transition-colors"
-            />
-            <p className="text-[11px] text-text-secondary font-display mt-2">
-              Encuéntralo en la URL de tu Google Sheet entre /d/ y /edit
-            </p>
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setDataSource("sheets")}
+                className={`flex-1 py-2.5 rounded-card text-[13px] font-display font-medium border transition-colors ${
+                  dataSource === "sheets"
+                    ? "text-white border-transparent"
+                    : "bg-surface border-border text-text-secondary"
+                }`}
+                style={dataSource === "sheets" ? { backgroundColor: color } : undefined}
+              >
+                Google Sheets
+              </button>
+              <button
+                onClick={() => setDataSource("neon")}
+                className={`flex-1 py-2.5 rounded-card text-[13px] font-display font-medium border transition-colors ${
+                  dataSource === "neon"
+                    ? "text-white border-transparent"
+                    : "bg-surface border-border text-text-secondary"
+                }`}
+                style={dataSource === "neon" ? { backgroundColor: color } : undefined}
+              >
+                Base de datos (Neon)
+              </button>
+            </div>
+
+            {dataSource === "sheets" ? (
+              <>
+                <input
+                  type="text"
+                  value={sheetId}
+                  onChange={(e) => setSheetId(e.target.value)}
+                  placeholder="1BxiMkKeFjR..."
+                  autoFocus
+                  className="w-full bg-surface border border-border rounded-card px-4 py-3.5 text-[14px] font-mono text-text-primary placeholder:text-text-secondary/40 outline-none focus:border-text-secondary transition-colors"
+                />
+                <p className="text-[11px] text-text-secondary font-display mt-2">
+                  Encuéntralo en la URL de tu Google Sheet entre /d/ y /edit
+                </p>
+              </>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  value={neonSalonId}
+                  onChange={(e) => setNeonSalonId(e.target.value)}
+                  placeholder="fe431f09-608e-45e8-bd35-a355d3c0421d"
+                  autoFocus
+                  className="w-full bg-surface border border-border rounded-card px-4 py-3.5 text-[14px] font-mono text-text-primary placeholder:text-text-secondary/40 outline-none focus:border-text-secondary transition-colors"
+                />
+                <p className="text-[11px] text-text-secondary font-display mt-2">
+                  ID del salón en la tabla &quot;salones&quot; de la base de datos Neon
+                </p>
+              </>
+            )}
           </div>
 
           {/* Info card */}

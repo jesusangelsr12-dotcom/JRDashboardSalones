@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import type { Salon, Cita, Gasto, Comision, GastoAdmin, MovimientoBolsa, ResumenSemanal as ResumenType } from "@/lib/types";
 import { getSalon, getAcumulados, getGastosAdmin, getMovimientosBolsa } from "@/lib/store";
 import { fetchSalonData } from "@/lib/sheets";
+import { fetchSalonDataNeon } from "@/lib/neon";
 import { calcularResumenSemanal } from "@/lib/calculations";
 import { exportarDatosXlsx } from "@/lib/exportXlsx";
 import { getCierres } from "@/lib/store";
@@ -82,8 +83,22 @@ export default function SalonDashboard() {
       let sheetGastos: Gasto[] = [];
       let sheetComisiones: Comision[] = [];
 
-      // Fetch from Sheets if valid ID
-      if (salon.sheetId && !salon.sheetId.startsWith("TU_SHEET_ID")) {
+      // Fetch de Neon o de Sheets, según la fuente de datos configurada
+      if (salon.dataSource === "neon") {
+        if (salon.neonSalonId) {
+          try {
+            const { citas: c, gastos: g, comisiones: com } = await fetchSalonDataNeon(salon.neonSalonId);
+            sheetCitas = c;
+            sheetGastos = g.map((gasto) => ({
+              ...gasto,
+              source: "sheets" as const,
+            }));
+            sheetComisiones = com;
+          } catch (err) {
+            setError("No se pudieron cargar los datos de la base de datos. Verifica la conexión a Neon.");
+          }
+        }
+      } else if (salon.sheetId && !salon.sheetId.startsWith("TU_SHEET_ID")) {
         try {
           const { citas: c, gastos: g, comisiones: com } = await fetchSalonData(salon.sheetId);
           sheetCitas = c;

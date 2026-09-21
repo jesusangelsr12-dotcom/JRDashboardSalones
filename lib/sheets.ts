@@ -103,7 +103,7 @@ function parseServicios(raw: string): ServicioItem[] {
 
 // ── Normalizar método de pago ──
 
-function parseMetodoPago(raw: string): MetodoPago {
+export function parseMetodoPago(raw: string): MetodoPago {
   const normalized = raw.trim().toLowerCase();
   if (normalized.includes("tarjeta")) return "Tarjeta";
   if (normalized.includes("transferencia")) return "Transferencia";
