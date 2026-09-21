@@ -13,9 +13,11 @@ function getSql() {
 }
 
 // ── Filas crudas de Neon (tablas del proyecto TWCApp) ──
+// OJO: @neondatabase/serverless parsea columnas `date` como objetos Date
+// (medianoche local), no como string — a diferencia de los otros campos.
 
 interface CitaRow {
-  fecha: string;
+  fecha: Date;
   timestamp: string | null;
   clienta: string;
   items: { tipo?: string; nombre?: string; costo?: number }[];
@@ -24,7 +26,7 @@ interface CitaRow {
 }
 
 interface GastoRow {
-  fecha: string;
+  fecha: Date;
   timestamp: string | null;
   descripcion: string;
   monto: string;
@@ -32,7 +34,7 @@ interface GastoRow {
 }
 
 interface ComisionRow {
-  fecha: string;
+  fecha: Date;
   clienta: string | null;
   trabajadora: string;
   item: string | null;
@@ -82,7 +84,7 @@ export async function fetchSalonDataNeon(
 
   const citas: Cita[] = citasRows
     .map((row) => ({
-      fecha: new Date(row.fecha + "T00:00:00"),
+      fecha: row.fecha,
       timestamp: row.timestamp || "",
       clienta: row.clienta?.trim() || "Sin nombre",
       servicios: parseServiciosNeon(row.items),
@@ -93,7 +95,7 @@ export async function fetchSalonDataNeon(
 
   const gastos: Gasto[] = gastosRows
     .map((row) => ({
-      fecha: new Date(row.fecha + "T00:00:00"),
+      fecha: row.fecha,
       timestamp: row.timestamp || "",
       descripcion: row.descripcion?.trim() || "Sin descripción",
       monto: Number(row.monto) || 0,
@@ -103,7 +105,7 @@ export async function fetchSalonDataNeon(
 
   const comisiones: Comision[] = comisionesRows
     .map((row) => ({
-      fecha: new Date(row.fecha + "T00:00:00"),
+      fecha: row.fecha,
       clienta: row.clienta?.trim() || "Sin nombre",
       trabajadora: row.trabajadora?.trim() || "Sin nombre",
       item: row.item?.trim() || "Sin descripción",

@@ -18,9 +18,12 @@ export async function fetchSalonDataNeon(
 
   const data = await res.json();
 
+  // El servidor manda fecha como "YYYY-MM-DD" (ver route.ts); se ancla a
+  // medianoche local igual que lib/sheets.ts, para que ambas fuentes de
+  // datos calculen "semana actual" con el mismo criterio.
   return {
-    citas: (data.citas as Cita[]).map((c) => ({ ...c, fecha: new Date(c.fecha) })),
-    gastos: (data.gastos as Gasto[]).map((g) => ({ ...g, fecha: new Date(g.fecha) })),
-    comisiones: (data.comisiones as Comision[]).map((c) => ({ ...c, fecha: new Date(c.fecha) })),
+    citas: (data.citas as Cita[]).map((c) => ({ ...c, fecha: new Date(c.fecha + "T00:00:00") })),
+    gastos: (data.gastos as Gasto[]).map((g) => ({ ...g, fecha: new Date(g.fecha + "T00:00:00") })),
+    comisiones: (data.comisiones as Comision[]).map((c) => ({ ...c, fecha: new Date(c.fecha + "T00:00:00") })),
   };
 }
