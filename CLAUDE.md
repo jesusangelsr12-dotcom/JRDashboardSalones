@@ -24,8 +24,10 @@ Full knowledge base: `JR_CONSULTORIA_APP.md` (update with every significant chan
 
 ## Git
 
-- Production: `main` (Vercel auto-deploy)
-- Development: `claude/fix-vercel-production-branch-pj9gq`
+- Production: `claude/main` (Vercel auto-deploy en jr-dashboard-salones.vercel.app)
+- Development: ramas `claude/*` por feature; al terminar, fast-forward a `claude/main`
+- Las ramas `main` y `claude/fix-vercel-production-branch-pj9gq` NO despliegan nada
+  (nombres históricos; Vercel solo construye pushes a `claude/main` y previews de features)
 
 ## Environment
 

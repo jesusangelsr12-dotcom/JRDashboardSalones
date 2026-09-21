@@ -46,7 +46,12 @@ lib/
   store.ts                ← Toda la lógica CRUD con Supabase (649+ líneas)
   calculations.ts         ← Todos los cálculos financieros
   types.ts                ← Interfaces TypeScript
-  __tests__/              ← Tests unitarios (39 tests)
+  sheets.ts                ← Fetch de citas/gastos/comisiones desde Google Sheets (client-side)
+  neon.ts                  ← Fetch client-side de citas/gastos/comisiones vía /api/salon-data/neon
+  neonServer.ts            ← Query a Neon (server-only, usa NEON_DATABASE_URL)
+  __tests__/              ← Tests unitarios
+
+app/api/salon-data/neon/route.ts ← Route handler que expone fetchSalonDataNeon() al cliente sin filtrar la connection string
 
 supabase/
   schema.sql              ← Schema completo de la BD
@@ -63,6 +68,25 @@ supabase/
 4. Mutaciones llaman funciones de `lib/store.ts` y luego re-fetchean con `initStore()`
 5. Window focus listener re-fetcha el salón al volver de config
 
+### Fuente de datos de citas/gastos/comisiones (`salon.dataSource`)
+
+Cada salón trae sus citas/gastos/comisiones de una de dos fuentes, controlada por
+`salon.dataSource` ("sheets" | "neon", columna `data_source` en Supabase):
+
+- **`sheets`** (default, salones legacy): `lib/sheets.ts` → `fetchSalonData(salon.sheetId)`
+  hace fetch directo desde el navegador a la API de Google Sheets.
+- **`neon`**: `lib/neon.ts` → `fetchSalonDataNeon(salon.neonSalonId)` llama a
+  `GET /api/salon-data/neon?neonSalonId=...`, que corre en el servidor y consulta
+  Postgres vía `lib/neonServer.ts` (`@neondatabase/serverless`). La connection string
+  (`NEON_DATABASE_URL`) nunca se expone al navegador — solo se usa en el route handler.
+  Requiere que `salon.neonSalonId` apunte al `id` (uuid) del salón en la tabla `salones`
+  del proyecto Neon (no al `salon_id` de negocio tipo "salon_001").
+
+**The Woman Cave** ya no usa Sheets: migró a la app propia "TWCApp" (proyecto Neon
+`little-sea-87455244`, tablas `citas`/`gastos`/`comisiones`/`salones`). Su fila en
+Supabase tiene `data_source = 'neon'` y `neon_salon_id = 'fe431f09-608e-45e8-bd35-a355d3c0421d'`.
+El `sheet_id` viejo se dejó intacto por si se necesita volver a Sheets.
+
 ---
 
 ## 3. Database Schema
@@ -74,6 +98,9 @@ supabase/
 |---|---|---|
 | id | uuid PK | gen_random_uuid() |
 | nombre | text | UNIQUE constraint |
+| sheet_id | text | ID del Google Sheet (solo si data_source = 'sheets') |
+| data_source | text | 'sheets' \| 'neon', default 'sheets' |
+| neon_salon_id | text | id del salón en la base Neon (solo si data_source = 'neon') |
 | bolsa_default_gastos_id | uuid FK→bolsas | nullable, ON DELETE SET NULL |
 | comision_tarjeta | numeric | % comisión terminal (ej: 3.5 = 3.5%) |
 | created_at | timestamptz | |
@@ -130,6 +157,7 @@ UNIQUE constraint: `cierres_salon_semana_unique (salon_id, semana_inicio)`
 2. `migration_002_fixes.sql` — RPC `increment_acumulado`, UNIQUE en cierres y salones
 3. `migration_movimientos_bolsa.sql` — tabla movimientos_bolsa
 4. `migration_comision_tarjeta.sql` — columna comision_tarjeta en salones
+5. `add_data_source_and_neon_salon_id` — columnas data_source y neon_salon_id en salones (soporte multi-fuente)
 
 ### RPC Functions
 - `increment_acumulado(bolsa_uuid uuid, delta numeric)` — actualiza acumulado atómicamente (evita race conditions)

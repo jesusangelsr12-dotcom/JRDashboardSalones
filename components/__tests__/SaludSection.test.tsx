@@ -10,6 +10,8 @@ const salon: Salon = {
   nombre: "Salón Test",
   color: "#7B4F2E",
   sheetId: "",
+  dataSource: "sheets",
+  neonSalonId: null,
   comisionTarjeta: 0,
   bolsaDefaultGastosId: null,
   createdAt: "",

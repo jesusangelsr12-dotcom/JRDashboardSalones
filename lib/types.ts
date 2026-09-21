@@ -1,10 +1,14 @@
 // ── Modelo principal: Salón ──
 
+export type DataSource = "sheets" | "neon";
+
 export interface Salon {
   id: string;
   nombre: string;
   color: string;
   sheetId: string;
+  dataSource: DataSource;
+  neonSalonId: string | null; // id del salón en la base de datos Neon (solo si dataSource = "neon")
   bolsas: Bolsa[];
   gastosFijos: GastoFijo[];
   bolsaDefaultGastosId: string | null;

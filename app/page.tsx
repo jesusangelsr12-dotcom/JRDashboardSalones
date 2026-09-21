@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Salon } from "@/lib/types";
 import { initStore } from "@/lib/store";
 import { fetchSalonData } from "@/lib/sheets";
+import { fetchSalonDataNeon } from "@/lib/neon";
 import { calcularIngresosMes } from "@/lib/calculations";
 import SalonCard from "@/components/salon/SalonCard";
 import EmptyState from "@/components/ui/EmptyState";
@@ -27,18 +28,19 @@ export default function Home() {
   }, []);
 
   const fetchIngresos = useCallback(async (salon: Salon) => {
-    // No intentar fetch con placeholder IDs
-    if (
-      !salon.sheetId ||
-      salon.sheetId.startsWith("TU_SHEET_ID")
-    ) {
+    const usaNeon = salon.dataSource === "neon";
+
+    // No intentar fetch sin fuente de datos configurada
+    if (usaNeon ? !salon.neonSalonId : !salon.sheetId || salon.sheetId.startsWith("TU_SHEET_ID")) {
       setIngresos((prev) => ({ ...prev, [salon.id]: 0 }));
       return;
     }
 
     setLoading((prev) => ({ ...prev, [salon.id]: true }));
     try {
-      const { citas } = await fetchSalonData(salon.sheetId);
+      const { citas } = usaNeon
+        ? await fetchSalonDataNeon(salon.neonSalonId!)
+        : await fetchSalonData(salon.sheetId);
       const hoy = new Date();
       const total = calcularIngresosMes(
         citas,
