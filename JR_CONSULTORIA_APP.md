@@ -48,7 +48,7 @@ lib/
   types.ts                ← Interfaces TypeScript
   sheets.ts                ← Fetch de citas/gastos/comisiones desde Google Sheets (client-side)
   neon.ts                  ← Fetch client-side de citas/gastos/comisiones vía /api/salon-data/neon
-  neonServer.ts            ← Query a Neon (server-only, usa NEON_DATABASE_URL)
+  neonServer.ts            ← Query a Neon (server-only, usa NEON_DATABASE_URL y NEON_DATABASE_URL_*)
   __tests__/              ← Tests unitarios
 
 app/api/salon-data/neon/route.ts ← Route handler que expone fetchSalonDataNeon() al cliente sin filtrar la connection string
@@ -81,10 +81,24 @@ Cada salón trae sus citas/gastos/comisiones de una de dos fuentes, controlada p
   (`NEON_DATABASE_URL`) nunca se expone al navegador — solo se usa en el route handler.
   Requiere que `salon.neonSalonId` apunte al `id` (uuid) del salón en la tabla `salones`
   del proyecto Neon (no al `salon_id` de negocio tipo "salon_001").
+- **Varios proyectos Neon**: cada app de salón tiene su propio proyecto Neon (mismo
+  esquema). Se configura una variable por proyecto en Vercel: `NEON_DATABASE_URL`
+  y `NEON_DATABASE_URL_<NOMBRE>` (ej. `NEON_DATABASE_URL_MARTHA`). `lib/neonServer.ts`
+  busca el uuid en la tabla `salones` de todas ellas y usa la que lo tenga; solo
+  recuerda en memoria en qué base está cada salón, los datos siempre se leen frescos.
+  Si el salón no está en ninguna base, la ruta responde 404 (antes regresaba listas
+  vacías y el dashboard mostraba ceros sin avisar). Si una base se cae, los salones
+  de las demás siguen cargando. Salón nuevo en otro proyecto = agregar su variable
+  en Vercel y poner su uuid en "Neon Salon ID"; no hay que tocar código ni Supabase.
 
 **The Woman Cave** ya no usa Sheets: migró a la app propia "TWCApp" (proyecto Neon
 `little-sea-87455244`, tablas `citas`/`gastos`/`comisiones`/`salones`). Su fila en
 Supabase tiene `data_source = 'neon'` y `neon_salon_id = 'fe431f09-608e-45e8-bd35-a355d3c0421d'`.
+
+**Martha Rdz Stylist** también está en Neon, en su propio proyecto "Martha Rdz App"
+(`broad-darkness-60286616`, branch `main` = `br-plain-hat-b50ivwf9`). Su fila en Supabase
+tiene `neon_salon_id = '0c77c982-2ca5-4320-b7f0-8908e469c6b9'` y se lee con
+`NEON_DATABASE_URL_MARTHA`. (`NEON_DATABASE_URL` sigue apuntando a TWCApp.)
 El `sheet_id` viejo se dejó intacto por si se necesita volver a Sheets.
 
 ---

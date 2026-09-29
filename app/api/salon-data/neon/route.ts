@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchSalonDataNeon } from "@/lib/neonServer";
+import { fetchSalonDataNeon, NeonSalonNoEncontradoError } from "@/lib/neonServer";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +31,9 @@ export async function GET(req: NextRequest) {
     };
     return NextResponse.json(data);
   } catch (err) {
+    if (err instanceof NeonSalonNoEncontradoError) {
+      return NextResponse.json({ error: err.message }, { status: 404 });
+    }
     console.error("Error fetching Neon salon data:", err);
     return NextResponse.json(
       { error: "Error al obtener datos de Neon" },

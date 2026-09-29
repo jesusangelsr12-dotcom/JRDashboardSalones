@@ -2,17 +2,72 @@ import { neon } from "@neondatabase/serverless";
 import type { Cita, Gasto, Comision, ServicioItem, MetodoPago } from "./types";
 import { parseMetodoPago } from "./sheets";
 
-// ── Cliente Neon (solo servidor — la connection string nunca llega al navegador) ──
+// ── Clientes Neon (solo servidor — las connection strings nunca llegan al navegador) ──
+// Cada salón vive en el proyecto Neon de su propia app (TWCApp, Martha Rdz App…),
+// con una variable por proyecto: NEON_DATABASE_URL y NEON_DATABASE_URL_<NOMBRE>.
+// El salón se busca por su uuid en la tabla `salones` de cada base, así que no
+// hay que configurar en Supabase a cuál pertenece.
 
-function getSql() {
-  const url = process.env.NEON_DATABASE_URL;
-  if (!url) {
-    throw new Error("NEON_DATABASE_URL no está configurada");
-  }
-  return neon(url);
+const NEON_ENV_PATTERN = /^NEON_DATABASE_URL(_[A-Z0-9_]+)?$/;
+
+function neonEnvKeys(): string[] {
+  return Object.keys(process.env)
+    .filter((key) => NEON_ENV_PATTERN.test(key) && process.env[key])
+    .sort();
 }
 
-// ── Filas crudas de Neon (tablas del proyecto TWCApp) ──
+// Solo recuerda en qué base está cada salón; sus datos siempre se leen frescos.
+const baseDeSalon = new Map<string, string>();
+
+export class NeonSalonNoEncontradoError extends Error {
+  constructor(neonSalonId: string) {
+    super(`El salón ${neonSalonId} no existe en ninguna base Neon configurada`);
+    this.name = "NeonSalonNoEncontradoError";
+  }
+}
+
+async function getSqlDeSalon(neonSalonId: string) {
+  const cacheada = baseDeSalon.get(neonSalonId);
+  if (cacheada && process.env[cacheada]) {
+    return neon(process.env[cacheada]!);
+  }
+
+  const keys = neonEnvKeys();
+  if (keys.length === 0) {
+    throw new Error("NEON_DATABASE_URL no está configurada");
+  }
+
+  const resultados = await Promise.allSettled(
+    keys.map(async (key) => {
+      const sql = neon(process.env[key]!);
+      const rows = (await sql`
+        SELECT 1 FROM salones WHERE id::text = lower(${neonSalonId}) LIMIT 1
+      `) as unknown[];
+      return rows.length > 0;
+    })
+  );
+
+  resultados.forEach((r, i) => {
+    if (r.status === "rejected") {
+      console.error(`Neon (${keys[i]}) no respondió:`, r.reason);
+    }
+  });
+
+  const encontrada = resultados.findIndex((r) => r.status === "fulfilled" && r.value);
+  if (encontrada >= 0) {
+    baseDeSalon.set(neonSalonId, keys[encontrada]);
+    return neon(process.env[keys[encontrada]]!);
+  }
+
+  // Si alguna base falló no se puede afirmar que el salón no exista
+  const fallida = resultados.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
+  if (fallida) {
+    throw fallida.reason;
+  }
+  throw new NeonSalonNoEncontradoError(neonSalonId);
+}
+
+// ── Filas crudas de Neon (mismo esquema en TWCApp y Martha Rdz App) ──
 // OJO: @neondatabase/serverless parsea columnas `date` como objetos Date
 // (medianoche local), no como string — a diferencia de los otros campos.
 
@@ -62,7 +117,7 @@ function metodoPagoOrDefault(raw: string | null): MetodoPago {
 export async function fetchSalonDataNeon(
   neonSalonId: string
 ): Promise<{ citas: Cita[]; gastos: Gasto[]; comisiones: Comision[] }> {
-  const sql = getSql();
+  const sql = await getSqlDeSalon(neonSalonId);
 
   const [citasRows, gastosRows, comisionesRows] = await Promise.all([
     sql`
