@@ -238,6 +238,11 @@ UNIQUE constraint: `cierres_salon_semana_unique (salon_id, semana_inicio)`
 - Barras semanales de ingresos/gastos
 - Vista mensual y anual
 
+### Botón "Actualizar" (`components/ui/UpdateButton.tsx`)
+- Hasta abajo en la pantalla principal y en la de cada salón
+- Des-registra el service worker, borra todas las cachés (`caches.keys()`) y recarga → siempre carga la última versión publicada. Si la limpieza falla, recarga igual
+- `public/sw.js` (cache `jr-dashboard-v2`): páginas (`request.mode === "navigate"`) y payloads RSC (`?_rsc=`) son network-first, así cada deploy se ve solo al abrir la app; la caché queda como respaldo sin conexión. Assets estáticos siguen cache-first (llevan hash)
+
 ---
 
 ## 5. Business Logic & Cálculos Clave

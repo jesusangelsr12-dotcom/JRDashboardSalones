@@ -11,6 +11,7 @@ import SalonCard from "@/components/salon/SalonCard";
 import EmptyState from "@/components/ui/EmptyState";
 import FadeIn from "@/components/motion/FadeIn";
 import StaggerChildren, { StaggerItem } from "@/components/motion/StaggerChildren";
+import UpdateButton from "@/components/ui/UpdateButton";
 
 export default function Home() {
   const [salones, setSalones] = useState<Salon[]>([]);
@@ -126,7 +127,10 @@ export default function Home() {
 
       {/* Footer sutil */}
       <FadeIn delay={0.4}>
-        <p className="text-center text-[11px] text-text-secondary/50 mt-12">
+        <div className="mt-12">
+          <UpdateButton />
+        </div>
+        <p className="text-center text-[11px] text-text-secondary/50 mt-4">
           JR Consulting © {new Date().getFullYear()}
         </p>
       </FadeIn>

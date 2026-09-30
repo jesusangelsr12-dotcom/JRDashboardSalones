@@ -1,4 +1,4 @@
-const CACHE_NAME = "jr-dashboard-v1";
+const CACHE_NAME = "jr-dashboard-v2";
 const PRECACHE_URLS = ["/", "/manifest.json"];
 
 // Install: precache shell
@@ -31,8 +31,14 @@ self.addEventListener("fetch", (event) => {
   // Skip non-GET and external requests
   if (request.method !== "GET" || url.origin !== self.location.origin) return;
 
-  // API calls: network-first
-  if (url.pathname.startsWith("/api") || url.hostname.includes("googleapis")) {
+  // API calls y páginas (HTML): network-first, para que cada deploy nuevo
+  // se vea al abrir la app; la caché solo se usa sin conexión.
+  if (
+    request.mode === "navigate" ||
+    url.searchParams.has("_rsc") ||
+    url.pathname.startsWith("/api") ||
+    url.hostname.includes("googleapis")
+  ) {
     event.respondWith(
       fetch(request)
         .then((response) => {

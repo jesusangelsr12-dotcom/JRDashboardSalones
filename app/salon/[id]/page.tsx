@@ -18,6 +18,7 @@ import TablaSection from "@/components/dashboard/TablaSection";
 import SaludSection from "@/components/dashboard/SaludSection";
 import MovimientoBolsaModal from "@/components/dashboard/MovimientoBolsaModal";
 import FadeIn from "@/components/motion/FadeIn";
+import UpdateButton from "@/components/ui/UpdateButton";
 
 export default function SalonDashboard() {
   const params = useParams<{ id: string }>();
@@ -264,6 +265,11 @@ export default function SalonDashboard() {
           )}
         </FadeIn>
       )}
+
+      {/* Actualizar a la última versión */}
+      <div className="mt-10">
+        <UpdateButton />
+      </div>
 
       {/* Floating action buttons — bottom right */}
       <div className="fixed bottom-6 right-6 flex flex-col gap-2 items-end z-50">
