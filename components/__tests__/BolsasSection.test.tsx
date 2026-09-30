@@ -11,6 +11,7 @@ vi.mock("@/lib/store", () => ({
 }));
 
 import BolsasSection from "../dashboard/BolsasSection";
+import { getCierres } from "@/lib/store";
 
 const salon: Salon = {
   id: "s1",
@@ -62,7 +63,7 @@ describe("BolsasSection — copia para WhatsApp incluye gastos fijos", () => {
     expect(screen.getByText("Copiar")).toBeInTheDocument();
   });
 
-  it("el texto copiado contiene bolsas, total libre y los gastos fijos prorrateados", async () => {
+  it("el texto copiado lista bolsas y gastos fijos prorrateados, sin secciones ni totales", async () => {
     render(
       <BolsasSection resumen={resumen} salon={salon} salonColor={salon.color}
         citas={[]} gastos={[]} movimientos={[]} onCierreCompleto={() => {}} onMovimiento={() => {}} />
@@ -73,14 +74,61 @@ describe("BolsasSection — copia para WhatsApp incluye gastos fijos", () => {
 
     expect(writeText).toHaveBeenCalledTimes(1);
     const texto = writeText.mock.calls[0][0] as string;
+    const titulo = texto.split("\n")[0];
 
-    // Bolsas + total libre
-    expect(texto).toContain("Sueldo: $4,000");
-    expect(texto).toContain("Total libre: $8,000");
-    // Gastos fijos (Renta mensual 8000/4 = 2000; Luz semanal = 500; total 2500)
-    expect(texto).toContain("Gastos fijos");
-    expect(texto).toContain("Renta: $2,000");
-    expect(texto).toContain("Luz: $500");
-    expect(texto).toContain("Total gastos fijos: $2,500");
+    // Renta mensual 8000/4 = 2000; Luz semanal = 500
+    expect(texto).toBe(
+      [
+        titulo,
+        "",
+        "📦 Sueldo: $4,000",
+        "📦 Reparto: $4,000",
+        "",
+        "• Renta: $2,000",
+        "• Luz: $500",
+      ].join("\n")
+    );
+    expect(titulo).toMatch(/^💰 \*Distribución semana .+\*$/);
+    expect(texto).not.toContain("Total");
+    expect(texto).not.toContain("Gastos fijos");
+  });
+
+  it("una semana del historial copia el desglose guardado en su cierre", async () => {
+    vi.mocked(getCierres).mockResolvedValueOnce([
+      {
+        fecha: "2026-08-24T10:00:00.000Z",
+        semanaInicio: "2026-08-17",
+        semanaFin: "2026-08-23",
+        ingresos: 12000,
+        gastos: 2500,
+        libre: 9500,
+        bolsas: [
+          { bolsaId: "b1", nombre: "Sueldo", monto: 4750 },
+          { bolsaId: "b2", nombre: "Reparto", monto: 4750 },
+        ],
+      },
+    ]);
+    render(
+      <BolsasSection resumen={resumen} salon={salon} salonColor={salon.color}
+        citas={[]} gastos={[]} movimientos={[]} onCierreCompleto={() => {}} onMovimiento={() => {}} />
+    );
+
+    fireEvent.click(await screen.findByText("1 semanas"));
+    fireEvent.click(screen.getByText("Semana 17 – 23 Ago 2026"));
+    fireEvent.click(await screen.findByText("Copiar semana"));
+    await screen.findByText("Copiado");
+
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(writeText.mock.calls[0][0]).toBe(
+      [
+        "💰 *Distribución semana 17 – 23 Ago 2026*",
+        "",
+        "📦 Sueldo: $4,750",
+        "📦 Reparto: $4,750",
+        "",
+        "• Renta: $2,000",
+        "• Luz: $500",
+      ].join("\n")
+    );
   });
 });

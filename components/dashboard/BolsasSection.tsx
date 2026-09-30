@@ -49,38 +49,48 @@ function formatSemanaLabel(inicio: string, fin: string): string {
   return `${dia1} ${mes1} – ${dia2} ${mes2} ${anio}`;
 }
 
+// Texto para WhatsApp: solo cuánto guardar por bolsa y por gasto fijo,
+// sin encabezados de sección ni totales.
 function buildWhatsAppText(
-  resumen: ResumenSemanal,
   semanaLabel: string,
-  gastosFijos: GastoFijo[]
+  bolsas: { nombre: string; monto: number }[],
+  gastosFijos: GastoFijo[],
+  comisiones: number
 ): string {
   const lines: string[] = [];
   lines.push(`💰 *Distribución semana ${semanaLabel}*`);
   lines.push("");
-  for (const b of resumen.bolsas) {
-    lines.push(`📦 ${b.nombre}: ${formatMoney(b.montoSemana)}`);
-  }
-  lines.push("");
-  lines.push(`Total libre: ${formatMoney(resumen.libre)}`);
-
-  if (gastosFijos.length > 0) {
-    let totalFijos = 0;
-    lines.push("");
-    lines.push("🧾 *Gastos fijos*");
-    for (const gf of gastosFijos) {
-      const montoSemana = gf.frecuencia === "semanal" ? gf.monto : gf.monto / 4;
-      totalFijos += montoSemana;
-      lines.push(`• ${gf.nombre || "Sin nombre"}: ${formatMoney(montoSemana)}`);
-    }
-    lines.push(`Total gastos fijos: ${formatMoney(totalFijos)}`);
+  for (const b of bolsas) {
+    lines.push(`📦 ${b.nombre}: ${formatMoney(b.monto)}`);
   }
 
-  if (resumen.comisiones > 0) {
+  const items = gastosFijos.map((gf) => {
+    const montoSemana = gf.frecuencia === "semanal" ? gf.monto : gf.monto / 4;
+    return `• ${gf.nombre || "Sin nombre"}: ${formatMoney(montoSemana)}`;
+  });
+  if (comisiones > 0) {
+    items.push(`• Comisiones trabajadoras: ${formatMoney(comisiones)}`);
+  }
+  if (items.length > 0) {
     lines.push("");
-    lines.push(`💇‍♀️ Comisiones trabajadoras: ${formatMoney(resumen.comisiones)}`);
+    lines.push(...items);
   }
 
   return lines.join("\n");
+}
+
+async function copyToClipboard(text: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    // Fallback for older browsers
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+  }
 }
 
 export default function BolsasSection({
@@ -102,6 +112,7 @@ export default function BolsasSection({
   const [closingSemana, setClosingSemana] = useState<string | null>(null);
   const [autoClosing, setAutoClosing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedCierre, setCopiedCierre] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadAndAutoClose() {
@@ -186,22 +197,34 @@ export default function BolsasSection({
   );
 
   const handleCopy = async () => {
-    const text = buildWhatsAppText(resumen, semanaActualLabel, salon.gastosFijos);
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback for older browsers
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+    const text = buildWhatsAppText(
+      semanaActualLabel,
+      resumen.bolsas.map((b) => ({ nombre: b.nombre, monto: b.montoSemana })),
+      salon.gastosFijos,
+      resumen.comisiones
+    );
+    await copyToClipboard(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Semana ya cerrada: las bolsas salen del cierre guardado (lo que se
+  // repartió ese día); las comisiones se recalculan para esa semana.
+  const handleCopyCierre = async (cierre: CierreSemana) => {
+    const { comisiones: comisionesSemana } = calcularResumenParaSemana(
+      citas, gastos, comisiones, salon.gastosFijos,
+      cierre.semanaInicio, cierre.semanaFin,
+      salon.bolsaDefaultGastosId, salon.comisionTarjeta ?? 0
+    );
+    const text = buildWhatsAppText(
+      formatSemanaLabel(cierre.semanaInicio, cierre.semanaFin),
+      cierre.bolsas,
+      salon.gastosFijos,
+      comisionesSemana
+    );
+    await copyToClipboard(text);
+    setCopiedCierre(cierre.semanaInicio);
+    setTimeout(() => setCopiedCierre((k) => (k === cierre.semanaInicio ? null : k)), 2000);
   };
 
   const INITIAL_SHOW = 8;
@@ -394,6 +417,30 @@ export default function BolsasSection({
                             <span className="text-[13px] font-numbers font-semibold text-text-primary">
                               {formatMoney(cierre.libre)}
                             </span>
+                          </div>
+                          <div className="flex justify-end pt-2">
+                            <button
+                              onClick={() => handleCopyCierre(cierre)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-display font-medium transition-all active:scale-95"
+                              style={{ backgroundColor: salonColor + "14", color: salonColor }}
+                            >
+                              {copiedCierre === key ? (
+                                <>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                  <span>Copiado</span>
+                                </>
+                              ) : (
+                                <>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                  </svg>
+                                  <span>Copiar semana</span>
+                                </>
+                              )}
+                            </button>
                           </div>
                         </div>
                       </motion.div>

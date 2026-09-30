@@ -194,7 +194,8 @@ UNIQUE constraint: `cierres_salon_semana_unique (salon_id, semana_inicio)`
 - Animación expand/collapse con Framer Motion
 - Protección contra doble cierre de la misma semana (UNIQUE constraint + addCierre check)
 - El botón manual de cierre fue removido — todo es automático
-- **Copiar para WhatsApp**: botón que copia distribución actual al clipboard con formato de emojis
+- **Copiar para WhatsApp**: botón que copia distribución actual al clipboard con formato de emojis. Formato limpio, sin encabezados de sección ni totales: título `💰 *Distribución semana …*`, una línea `📦 Bolsa: $X` por bolsa y, tras una línea en blanco, `• Gasto fijo: $X` por gasto fijo prorrateado a la semana (+ `• Comisiones trabajadoras` si > 0)
+- **Copiar semana cerrada**: cada semana del historial (expandida) tiene "Copiar semana"; copia el desglose con los montos de bolsas guardados en su cierre (lo repartido ese día), útil si la semana se cerró antes de copiarla. Los gastos fijos salen de la configuración actual del salón (el cierre no guarda su desglose) y las comisiones se recalculan para esa semana
 
 ### Bolsas
 - Múltiples bolsas por salón (efectivo, banco, otro)
