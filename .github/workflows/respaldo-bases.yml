@@ -1,0 +1,58 @@
+name: Respaldo nocturno de bases de datos
+
+# Respaldo cifrado de Neon (Martha, TWC) y Supabase (dashboard).
+# Cómo configurarlo y cómo restaurar: JR_CONSULTORIA_APP.md → "Respaldos".
+
+on:
+  schedule:
+    - cron: "17 9 * * *" # 09:17 UTC = 03:17 hora del centro de México
+  workflow_dispatch: # botón "Run workflow" para correrlo a mano
+
+permissions:
+  contents: read
+
+concurrency:
+  group: respaldo-bases
+  cancel-in-progress: false
+
+jobs:
+  respaldo:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # Neon corre Postgres 18: pg_dump debe ser igual o más nuevo que el servidor
+      - name: Instalar pg_dump 18
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-18
+          echo "/usr/lib/postgresql/18/bin" >> "$GITHUB_PATH"
+
+      - name: Respaldar y cifrar
+        id: respaldo
+        env:
+          NEON_MARTHA_URL: ${{ secrets.NEON_MARTHA_URL }}
+          NEON_TWC_URL: ${{ secrets.NEON_TWC_URL }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          RESPALDO_PASSPHRASE: ${{ secrets.RESPALDO_PASSPHRASE }}
+        run: |
+          echo "fecha=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+          pg_dump --version
+          bash scripts/respaldo-bases.sh .
+
+      # Se sube aunque alguna base haya fallado, para no perder las que sí salieron
+      - name: Guardar respaldo (90 días)
+        if: ${{ !cancelled() && hashFiles('respaldo-bases-*.tar.gpg') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: respaldo-bases-${{ steps.respaldo.outputs.fecha }}-${{ github.run_attempt }}
+          path: respaldo-bases-*.tar.gpg
+          retention-days: 90
+          compression-level: 0
+          if-no-files-found: error

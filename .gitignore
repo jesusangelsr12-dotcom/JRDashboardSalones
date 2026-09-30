@@ -31,3 +31,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# respaldos de base de datos (contienen datos de clientes)
+/respaldo-bases-*.tar.gpg
+*.dump

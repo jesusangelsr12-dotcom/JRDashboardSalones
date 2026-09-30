@@ -521,4 +521,49 @@ los tokens propaga el look a toda la app (todas las pantallas consumen estos tok
 
 ---
 
-_Última actualización: 2026-06-13 — rediseño visual app-wide (tokens cálidos) + módulo Salud (Fase 1+2)_
+## 13. Respaldos de bases de datos
+
+Las tres bases están en plan gratis: Neon guarda solo 6 h de historial y Supabase no da
+respaldos descargables. La protección es de dos capas:
+
+**1. Snapshot manual en Neon** (1 por proyecto en plan gratis, no caduca). Creados el
+2026-09-30 con nombre `respaldo-manual-2026-09-30`:
+Martha `snap-shy-silence-b5fucd4w`, TWC `snap-odd-shape-axzr51c9`. Se restauran desde
+Neon Console → Backup & restore. Renovarlo (borrar el viejo, crear uno nuevo) antes de
+cualquier cambio grande de esquema o de datos.
+
+**2. Respaldo nocturno cifrado** (`.github/workflows/respaldo-bases.yml` →
+`scripts/respaldo-bases.sh`). Diario 09:17 UTC (03:17 centro de México) y a mano con
+"Run workflow". `pg_dump` 18 de las 3 bases → un `.tar.gpg` cifrado AES-256 → artifact
+de GitHub Actions por 90 días. El repo es **público**: cualquiera con cuenta de GitHub
+puede bajar los artifacts, por eso van cifrados; sin la contraseña no se pueden abrir.
+Si una base falla se guardan las demás y el job queda en rojo (GitHub avisa por correo).
+
+Secrets (GitHub → Settings → Secrets and variables → Actions):
+
+| Secret | Valor |
+|---|---|
+| `NEON_MARTHA_URL` | Connection string de Martha Rdz App, branch `main`, **sin** `-pooler` en el host |
+| `NEON_TWC_URL` | Connection string de TWCApp, branch `production`, **sin** `-pooler` |
+| `SUPABASE_DB_URL` | Supabase → Connect → **Session pooler** (puerto 5432; la conexión directa es solo IPv6 y GitHub no la alcanza) |
+| `RESPALDO_PASSPHRASE` | Contraseña larga para cifrar. Guardarla también fuera de GitHub: sin ella los respaldos no sirven |
+
+Los workflows programados solo corren desde la rama por defecto del repo (`claude/main`),
+y GitHub los pausa si el repo pasa 60 días sin actividad (manda correo; se reactiva en
+la pestaña Actions).
+
+**Restaurar** (siempre primero en una base o branch nuevo, nunca directo sobre producción):
+
+```bash
+gpg --decrypt respaldo-bases-AAAA-MM-DD.tar.gpg | tar -xf -   # pide la contraseña
+# → martha.dump, twc.dump, dashboard.dump
+pg_restore --no-owner --no-privileges -d "<URL de la base nueva>" martha.dump
+```
+
+`dashboard.dump` solo trae el esquema `public`; al restaurarlo en una base que ya lo
+tiene, pg_restore avisa `schema "public" already exists` y termina con código 1, pero
+los datos sí se restauran (verificado).
+
+---
+
+_Última actualización: 2026-09-30 — soporte multi-proyecto Neon (Martha) + respaldos nocturnos cifrados_
