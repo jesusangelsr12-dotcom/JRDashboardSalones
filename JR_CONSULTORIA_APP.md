@@ -525,6 +525,44 @@ los tokens propaga el look a toda la app (todas las pantallas consumen estos tok
   del salón; `TabNav` como segmented control sobre track cálido.
 - Fuentes sin cambio: Syne (display) + DM Mono (números), igual que el tab Salud aprobado.
 
+## 13. Rediseño con la marca apalabra (rama `claude/rediseno-apalabra`)
+
+Mockup aprobado: `docs/rediseno-apalabra.html`. La rama NO está en producción.
+
+**Tokens y fuentes** (`tailwind.config.ts`, `app/globals.css`, `app/layout.tsx`):
+papel `#FFF4F9`, tinta `#1C0B14`, rosa `#D9007A`, mandarina `#FF7A1A`, patio `#FFC83D`,
+entra/atento/sale para estados. Gabarito (cifras, `font-brand`, `.font-numbers`) + Figtree
+(`font-display`, `font-mono`) vía `next/font/google`. Ícono y manifest con el símbolo apalabra.
+
+**Navegación:** `TabNav` es una barra inferior fija con íconos. Los `TabId` no cambian;
+etiquetas: Resumen · Cierres (antes Bolsas) · Salud · Gráficas · Movimientos (antes Tabla).
+`DashboardHeader` trae menú ⋯ (Configuración, Descargar Excel, Cambiar de salón) y el
+semáforo global. Cambiar de salón conserva la pestaña con `?tab=`.
+
+**Inicio del administrador** (`app/page.tsx` + `lib/inicio.ts`, con tests):
+consolidado de todos los salones (ingresos del mes, utilidad, margen, libre de la semana,
+proyección al ritmo diario, visitas, ticket, costo de personal, clientas por recuperar),
+"Necesita tu atención" (`alertasInicio`), tarjeta por salón con sparkline de 8 semanas
+y comparativo con semáforo. Reutiliza `calcularSalud` y `calcularResumenSemanal`.
+
+**Cambios de lógica (pequeños y con tests):**
+- `calcularSaludMismoTramoAnterior` (lib/salud.ts): el mes en curso se compara contra el mismo
+  tramo del mes anterior (1–22 sep si hoy es 22 oct). Un mes cerrado sigue contra el mes completo.
+- Productos del mes (ResumenSemanal) ahora divide entre el ingreso **del mes**; antes usaba
+  `resumen.ingresos` (la semana) y el % salía inflado.
+
+**Cierres (BolsasSection):** solo cambió el JSX. Auto-cierre, `addCierre`, acumulados y textos
+de WhatsApp quedan igual. Historial abierto de entrada, gráfica de libre de las últimas 12
+semanas (tocar una barra abre esa semana), cada semana muestra ingresos y gastos guardados.
+El aviso "Semana … cerrada automáticamente" sobrevive al re-montaje vía sessionStorage
+(`jr_autocierre_<salonId>`).
+
+**Componentes eliminados por quedar sin uso:** `KpiCard`, `MetodoBreakdown`, `SalonCard`.
+
+**Pendiente conocido (sin cambiar):** los gastos admin se convierten sin `categoria` en la
+página del salón e Inicio, así que Salud no los cuenta en nómina/renta. `GastoAdminModal`
+sigue sin usarse (código previo).
+
 ---
 
-_Última actualización: 2026-06-13 — rediseño visual app-wide (tokens cálidos) + módulo Salud (Fase 1+2)_
+_Última actualización: 2026-10-22 — rediseño con la marca apalabra (rama claude/rediseno-apalabra)_

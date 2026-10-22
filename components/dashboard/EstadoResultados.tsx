@@ -10,6 +10,7 @@ import {
   getInicioMes,
   getFinMes,
 } from "@/lib/calculations";
+import { PeriodNav, Segmented, SectionLabel, METODO_COLOR, mayuscula } from "@/components/ui/Primitives";
 
 interface EstadoResultadosProps {
   citas: Cita[];
@@ -17,7 +18,6 @@ interface EstadoResultadosProps {
   comisiones?: Comision[];
   gastosFijos: GastoFijo[];
   comisionTarjeta: number;
-  salonColor: string;
   salonNombre: string;
 }
 
@@ -29,7 +29,6 @@ export default function EstadoResultados({
   comisiones = [],
   gastosFijos,
   comisionTarjeta,
-  salonColor,
   salonNombre,
 }: EstadoResultadosProps) {
   const [modo, setModo] = useState<Modo>("mes");
@@ -130,7 +129,7 @@ export default function EstadoResultados({
           ? gf.monto * mesesTranscurridos
           : gf.monto * semanasTranscurridas);
       }, 0);
-      periodoLabel = esAnioActual ? `${selectedAnio} (Year-to-Date)` : `${selectedAnio}`;
+      periodoLabel = esAnioActual ? `${selectedAnio} (al día de hoy)` : `${selectedAnio}`;
     } else {
       return null;
     }
@@ -205,142 +204,88 @@ export default function EstadoResultados({
   const canNext = modo === "mes" ? mesIdx < meses.length - 1 : modo === "semana" ? semIdx > 0 : anioIdx < anios.length - 1;
 
   return (
-    <section>
-      {/* Mode toggle */}
-      <div className="flex gap-2 mb-4">
-        {(["mes", "semana", "anual"] as Modo[]).map((m) => (
-          <button
-            key={m}
-            onClick={() => setModo(m)}
-            className={`px-4 py-2 rounded-card text-[13px] font-display font-semibold transition-all ${
-              modo === m
-                ? "text-white"
-                : "text-text-secondary bg-bg border border-border"
-            }`}
-            style={modo === m ? { backgroundColor: salonColor } : undefined}
-          >
-            {m === "mes" ? "Mensual" : m === "semana" ? "Semanal" : "Anual"}
-          </button>
+    <section className="bg-surface rounded-card border border-border p-3.5 mb-4">
+      <Segmented
+        className="mb-2.5"
+        opciones={[{ id: "mes", label: "Mensual" }, { id: "semana", label: "Semanal" }, { id: "anual", label: "Anual" }]}
+        valor={modo}
+        onChange={setModo}
+      />
+      <PeriodNav label={estado.periodoLabel} onPrev={navPrev} onNext={navNext} canPrev={canPrev} canNext={canNext} />
+
+      {/* Estado de resultados — pensado para captura de pantalla */}
+      <div className="mt-3 mb-2 pb-2.5 border-b-2 border-tinta">
+        <h2 className="font-brand text-[16px] font-bold tracking-[-0.02em] text-text-primary">Estado de Resultados</h2>
+        <p className="text-[12px] text-text-secondary">
+          {salonNombre} · {mayuscula(estado.periodoLabel)}
+        </p>
+      </div>
+
+      <div className="space-y-0.5">
+        <Row label="(+) Ingresos brutos" value={estado.ingresosBrutos} bold />
+        {comisionTarjeta > 0 && (
+          <Row label={`(-) Comisión tarjeta (${comisionTarjeta}%)`} value={-estado.comisionTotal} negative />
+        )}
+      </div>
+
+      <div className="border-t border-border mt-1.5 pt-1.5">
+        <Row label="Ingresos netos" value={estado.ingresosNetos} bold />
+      </div>
+
+      <div className="mt-2">
+        <Row label="(-) Gastos fijos" value={-estado.gastosFijosMonto} negative />
+        {estado.detalleGastosFijos.map((gf, i) => (
+          <SubRow key={gf.nombre || i} label={gf.nombre || "Sin nombre"} value={gf.monto} />
         ))}
       </div>
 
-      {/* Period navigation */}
-      <div className="flex items-center justify-between mb-5 bg-surface rounded-card border border-border px-4 py-2.5">
-        <button
-          onClick={navPrev}
-          disabled={!canPrev}
-          className="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary disabled:opacity-30 active:scale-90 transition-transform"
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M9 3L5 7L9 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-        </button>
-        <span className="text-[14px] font-display font-semibold text-text-primary capitalize">
-          {estado.periodoLabel}
-        </span>
-        <button
-          onClick={navNext}
-          disabled={!canNext}
-          className="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary disabled:opacity-30 active:scale-90 transition-transform"
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M5 3L9 7L5 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-        </button>
+      {estado.comisionesTrabajadoras > 0 && (
+        <div className="mt-1">
+          <Row label="(-) Comisiones trabajadoras" value={-estado.comisionesTrabajadoras} negative />
+        </div>
+      )}
+
+      <div className="mt-1">
+        <Row label="(-) Gastos variables" value={-estado.gastosVariables} negative />
       </div>
 
-      {/* Estado de Resultados Card — screenshot-friendly */}
-      <div className="bg-white rounded-card border border-border p-5 shadow-sm">
-        {/* Header */}
-        <div className="mb-5 pb-3 border-b-2" style={{ borderColor: salonColor }}>
-          <h2 className="text-[16px] font-display font-bold text-gray-900">
-            Estado de Resultados
-          </h2>
-          <p className="text-[13px] font-display text-gray-500">
-            {salonNombre} · {estado.periodoLabel}
-          </p>
-        </div>
+      {/* Utilidad Operativa */}
+      <div className="border-t-2 border-tinta mt-3 pt-3 flex items-center justify-between gap-3">
+        <span className="flex flex-col">
+          <span className="text-[14px] font-display font-bold text-text-primary">Utilidad Operativa</span>
+          <span className="text-[11.5px] text-text-secondary">Antes del sueldo de las dueñas</span>
+        </span>
+        <span className={`font-numbers text-[22px] font-bold ${estado.utilidadOperativa >= 0 ? "text-entra" : "text-sale"}`}>
+          {estado.utilidadOperativa >= 0 ? "" : "−"}
+          {formatMoney(Math.abs(estado.utilidadOperativa))}
+        </span>
+      </div>
+      <div className="flex justify-end mt-1.5">
+        <span
+          className={`text-[12px] font-numbers font-bold px-2.5 py-0.5 rounded-full ${
+            estado.margenOperativo >= 0 ? "bg-entra-soft text-entra" : "bg-sale-soft text-sale"
+          }`}
+        >
+          Margen: {estado.margenOperativo.toFixed(1)}%
+        </span>
+      </div>
 
-        {/* Ingresos */}
-        <div className="space-y-2 mb-4">
-          <Row label="(+) Ingresos brutos" value={estado.ingresosBrutos} bold />
-          {comisionTarjeta > 0 && (
-            <Row
-              label={`(-) Comisión tarjeta (${comisionTarjeta}%)`}
-              value={-estado.comisionTotal}
-              negative
-            />
-          )}
-        </div>
-
-        <Divider color={salonColor} />
-
-        <div className="mb-4 mt-3">
-          <Row label="Ingresos netos" value={estado.ingresosNetos} bold accent={salonColor} />
-        </div>
-
-        {/* Gastos fijos */}
-        <div className="space-y-1.5 mb-2">
-          <Row label="(-) Gastos fijos" value={-estado.gastosFijosMonto} negative />
-          {estado.detalleGastosFijos.map((gf, i) => (
-            <SubRow key={gf.nombre || i} label={gf.nombre || "Sin nombre"} value={gf.monto} />
-          ))}
-        </div>
-
-        {/* Comisiones trabajadoras */}
-        {estado.comisionesTrabajadoras > 0 && (
-          <div className="mb-2 mt-3">
-            <Row label="(-) Comisiones trabajadoras" value={-estado.comisionesTrabajadoras} negative />
-          </div>
-        )}
-
-        {/* Gastos variables */}
-        <div className="mb-3 mt-3">
-          <Row label="(-) Gastos variables" value={-estado.gastosVariables} negative />
-        </div>
-
-        <Divider color={salonColor} thick />
-
-        {/* Utilidad Operativa */}
-        <div className="mt-4 mb-2">
-          <Row
-            label="Utilidad Operativa"
-            value={estado.utilidadOperativa}
-            bold
-            large
-            accent={estado.utilidadOperativa >= 0 ? "#10B981" : "#EF4444"}
-          />
-          <div className="flex justify-end mt-1">
-            <span
-              className="text-[12px] font-mono px-2 py-0.5 rounded-full"
-              style={{
-                backgroundColor: estado.margenOperativo >= 0 ? "#10B98114" : "#EF444414",
-                color: estado.margenOperativo >= 0 ? "#10B981" : "#EF4444",
-              }}
-            >
-              Margen: {estado.margenOperativo.toFixed(1)}%
-            </span>
-          </div>
-        </div>
-
-        {/* Desglose por método */}
-        <div className="mt-5 pt-4 border-t border-gray-100">
-          <p className="text-[10px] uppercase tracking-[0.08em] text-gray-400 font-display font-medium mb-3">
-            Ingresos netos por método de pago
-          </p>
-          <div className="space-y-2">
-            {(["Efectivo", "Tarjeta", "Transferencia"] as const).map((m) => {
-              if (estado.porMetodo[m] === 0) return null;
-              return (
-                <div key={m} className="flex items-center justify-between">
-                  <span className="text-[12px] font-display text-gray-600">{m}</span>
-                  <span className="text-[13px] font-mono font-medium text-gray-800">
-                    {formatMoney(estado.porMetodo[m])}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+      {/* Desglose por método */}
+      <div className="mt-4 pt-3 border-t border-border">
+        <SectionLabel className="mb-2">Ingresos netos por método de pago</SectionLabel>
+        <div className="space-y-1.5">
+          {(["Efectivo", "Tarjeta", "Transferencia"] as const).map((m) => {
+            if (estado.porMetodo[m] === 0) return null;
+            return (
+              <div key={m} className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-[12.5px] text-text-secondary">
+                  <span className="w-2 h-2 rounded-[3px]" style={{ backgroundColor: METODO_COLOR[m] }} />
+                  {m}
+                </span>
+                <span className="text-[13px] font-numbers font-semibold text-text-primary">{formatMoney(estado.porMetodo[m])}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>
@@ -353,33 +298,19 @@ function Row({
   label,
   value,
   bold,
-  large,
   negative,
-  accent,
 }: {
   label: string;
   value: number;
   bold?: boolean;
-  large?: boolean;
   negative?: boolean;
-  accent?: string;
 }) {
   return (
-    <div className="flex items-center justify-between">
-      <span
-        className={`text-[13px] font-display ${
-          bold ? "font-semibold text-gray-900" : "text-gray-600"
-        }`}
-      >
-        {label}
-      </span>
-      <span
-        className={`font-mono ${large ? "text-[18px] font-bold" : "text-[14px] font-medium"} ${
-          negative ? "text-red-500" : ""
-        }`}
-        style={accent ? { color: accent } : undefined}
-      >
-        {value >= 0 ? "" : "-"}{formatMoney(Math.abs(value))}
+    <div className="flex items-center justify-between gap-3 py-1">
+      <span className={`text-[13px] ${bold ? "font-bold text-text-primary" : negative ? "text-sale" : "text-text-secondary"}`}>{label}</span>
+      <span className={`font-numbers text-[14px] ${bold ? "font-bold" : "font-semibold"} ${negative ? "text-sale" : "text-text-primary"}`}>
+        {value >= 0 ? "" : "−"}
+        {formatMoney(Math.abs(value))}
       </span>
     </div>
   );
@@ -387,22 +318,9 @@ function Row({
 
 function SubRow({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex items-center justify-between pl-5">
-      <span className="text-[11px] font-display text-gray-400">
-        {label}
-      </span>
-      <span className="text-[11px] font-mono text-gray-400">
-        {formatMoney(value)}
-      </span>
+    <div className="flex items-center justify-between pl-3 py-0.5">
+      <span className="text-[12px] text-text-secondary">{label}</span>
+      <span className="text-[12px] font-numbers text-text-secondary">{formatMoney(value)}</span>
     </div>
-  );
-}
-
-function Divider({ color, thick }: { color: string; thick?: boolean }) {
-  return (
-    <div
-      className={thick ? "h-[2px]" : "h-px"}
-      style={{ backgroundColor: thick ? color : color + "30" }}
-    />
   );
 }

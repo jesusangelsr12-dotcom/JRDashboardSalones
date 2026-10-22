@@ -4,12 +4,17 @@ import { useState, useEffect } from "react";
 import type { Bolsa, MetodoPago, TipoMovimiento } from "@/lib/types";
 import { addMovimientoBolsa } from "@/lib/store";
 import Modal from "@/components/ui/Modal";
+import { formatMoney } from "@/lib/calculations";
+import { IconChevronDown } from "@/components/ui/Icons";
+
+const LABEL = "text-[12px] font-display font-semibold text-text-secondary mb-1.5 block";
+const CAMPO =
+  "w-full bg-bg border border-border rounded-[12px] px-3 py-2.5 text-[14px] font-display text-text-primary placeholder:text-text-secondary/50 outline-none focus:border-rosa focus:ring-[3px] focus:ring-rosa/10 transition-colors";
 
 interface MovimientoBolsaModalProps {
   open: boolean;
   onClose: () => void;
   salonId: string;
-  salonColor: string;
   bolsas: Bolsa[];
   preselectedBolsaId?: string;
   onSaved: () => void;
@@ -19,7 +24,6 @@ export default function MovimientoBolsaModal({
   open,
   onClose,
   salonId,
-  salonColor,
   bolsas,
   preselectedBolsaId,
   onSaved,
@@ -67,38 +71,26 @@ export default function MovimientoBolsaModal({
 
   const selectedBolsa = bolsas.find((b) => b.id === bolsaId);
 
+  const opcionBase = "flex-1 py-2.5 rounded-[10px] text-[13px] font-display font-semibold transition-all";
+
   return (
     <Modal open={open} onClose={onClose}>
-      <h3 className="text-lg font-bold font-display text-text-primary mb-4">
-        Movimiento de bolsa
-      </h3>
+      <h3 className="font-brand text-[20px] font-extrabold tracking-[-0.025em] text-text-primary mb-4">Movimiento de bolsa</h3>
 
-      <div className="space-y-4 mb-6">
+      <div className="space-y-3.5 mb-5">
         {/* Tipo: Ingreso / Egreso */}
         <div>
-          <label className="text-[12px] font-display text-text-secondary mb-1 block">
-            Tipo
-          </label>
-          <div className="flex gap-2">
+          <span className={LABEL}>Tipo</span>
+          <div className="flex gap-[3px] bg-tinta/[0.06] rounded-[13px] p-[3px]">
             <button
               onClick={() => { setTipo("ingreso"); setEsCostoServicio(false); }}
-              className={`flex-1 py-2.5 rounded-[8px] text-[13px] font-display font-medium transition-all ${
-                tipo === "ingreso"
-                  ? "text-white"
-                  : "bg-bg border border-border text-text-secondary"
-              }`}
-              style={tipo === "ingreso" ? { backgroundColor: "#10B981" } : undefined}
+              className={`${opcionBase} ${tipo === "ingreso" ? "bg-entra text-white" : "text-text-secondary"}`}
             >
               + Agregar
             </button>
             <button
               onClick={() => setTipo("egreso")}
-              className={`flex-1 py-2.5 rounded-[8px] text-[13px] font-display font-medium transition-all ${
-                tipo === "egreso"
-                  ? "text-white"
-                  : "bg-bg border border-border text-text-secondary"
-              }`}
-              style={tipo === "egreso" ? { backgroundColor: "#EF4444" } : undefined}
+              className={`${opcionBase} ${tipo === "egreso" ? "bg-sale text-white" : "text-text-secondary"}`}
             >
               - Restar
             </button>
@@ -107,68 +99,53 @@ export default function MovimientoBolsaModal({
 
         {/* Bolsa */}
         <div>
-          <label className="text-[12px] font-display text-text-secondary mb-1 block">
-            Bolsa
-          </label>
-          <select
-            value={bolsaId}
-            onChange={(e) => setBolsaId(e.target.value)}
-            className="w-full bg-bg border border-border rounded-[8px] px-3 py-2.5 text-[14px] font-display text-text-primary outline-none focus:border-text-secondary transition-colors"
-          >
-            <option value="">Seleccionar bolsa</option>
-            {bolsas.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.nombre} ({b.porcentaje}%)
-              </option>
-            ))}
-          </select>
+          <label className={LABEL} htmlFor="mov-bolsa">Bolsa</label>
+          <div className="relative">
+            <select id="mov-bolsa" value={bolsaId} onChange={(e) => setBolsaId(e.target.value)} className={`${CAMPO} appearance-none pr-9`}>
+              <option value="">Seleccionar bolsa</option>
+              {bolsas.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.nombre} ({b.porcentaje}%)
+                </option>
+              ))}
+            </select>
+            <IconChevronDown size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+          </div>
           {selectedBolsa && (
-            <p className="text-[11px] font-mono text-text-secondary mt-1">
-              Acumulado actual:{" "}
-              <span style={{ color: selectedBolsa.color }}>
-                {new Intl.NumberFormat("es-MX", {
-                  style: "currency",
-                  currency: "MXN",
-                  minimumFractionDigits: 0,
-                }).format(selectedBolsa.acumulado)}
-              </span>
+            <p className="text-[11.5px] text-text-secondary mt-1">
+              Acumulado actual: <span className="font-numbers font-bold text-text-primary">{formatMoney(selectedBolsa.acumulado)}</span>
             </p>
           )}
         </div>
 
         {/* Monto */}
         <div>
-          <label className="text-[12px] font-display text-text-secondary mb-1 block">
-            Monto
-          </label>
-          <div className="flex items-center gap-1">
-            <span className="text-[14px] text-text-secondary font-mono">$</span>
+          <label className={LABEL} htmlFor="mov-monto">Monto</label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[14px] text-text-secondary font-numbers font-semibold">$</span>
             <input
+              id="mov-monto"
               type="number"
+              inputMode="decimal"
               value={monto}
               onChange={(e) => setMonto(e.target.value)}
               placeholder="0"
-              className="flex-1 bg-bg border border-border rounded-[8px] px-3 py-2.5 text-[14px] font-mono text-text-primary placeholder:text-text-secondary/40 outline-none focus:border-text-secondary transition-colors"
+              className={`${CAMPO} pl-7 font-numbers`}
             />
           </div>
         </div>
 
         {/* Método de pago */}
         <div>
-          <label className="text-[12px] font-display text-text-secondary mb-1 block">
-            Método
-          </label>
-          <div className="flex gap-2">
+          <span className={LABEL}>Método</span>
+          <div className="flex gap-[3px] bg-tinta/[0.06] rounded-[13px] p-[3px]">
             {(["Efectivo", "Tarjeta", "Transferencia"] as MetodoPago[]).map((m) => (
               <button
                 key={m}
                 onClick={() => setMetodoPago(m)}
-                className={`flex-1 py-2 rounded-[8px] text-[12px] font-display font-medium transition-all ${
-                  metodoPago === m
-                    ? "text-white"
-                    : "bg-bg border border-border text-text-secondary"
+                className={`${opcionBase} text-[12.5px] ${
+                  metodoPago === m ? "bg-surface text-text-primary shadow-[0_1px_3px_rgba(28,11,20,0.14)]" : "text-text-secondary"
                 }`}
-                style={metodoPago === m ? { backgroundColor: salonColor } : undefined}
               >
                 {m}
               </button>
@@ -178,80 +155,59 @@ export default function MovimientoBolsaModal({
 
         {/* Descripción */}
         <div>
-          <label className="text-[12px] font-display text-text-secondary mb-1 block">
-            Descripción (opcional)
-          </label>
+          <label className={LABEL} htmlFor="mov-desc">Descripción (opcional)</label>
           <input
+            id="mov-desc"
             type="text"
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
             placeholder={tipo === "ingreso" ? "Ej: Depósito, Cobro pendiente..." : "Ej: Retiro para materiales..."}
-            className="w-full bg-bg border border-border rounded-[8px] px-3 py-2.5 text-[14px] font-display text-text-primary placeholder:text-text-secondary/40 outline-none focus:border-text-secondary transition-colors"
+            className={CAMPO}
           />
         </div>
 
         {/* Fecha */}
         <div>
-          <label className="text-[12px] font-display text-text-secondary mb-1 block">
-            Fecha
-          </label>
-          <input
-            type="date"
-            value={fecha}
-            onChange={(e) => setFecha(e.target.value)}
-            className="w-full bg-bg border border-border rounded-[8px] px-3 py-2.5 text-[14px] font-mono text-text-primary outline-none focus:border-text-secondary transition-colors"
-          />
+          <label className={LABEL} htmlFor="mov-fecha">Fecha</label>
+          <input id="mov-fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={CAMPO} />
         </div>
 
         {/* Costo de servicio toggle — solo visible para egresos */}
         {tipo === "egreso" && (
-          <div>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <div
-                onClick={() => setEsCostoServicio(!esCostoServicio)}
-                className={`relative w-10 h-5 rounded-full transition-colors ${
-                  esCostoServicio ? "bg-emerald-500" : "bg-border"
+          <button
+            type="button"
+            onClick={() => setEsCostoServicio(!esCostoServicio)}
+            aria-pressed={esCostoServicio}
+            className="w-full flex items-center gap-3 text-left"
+          >
+            <span className={`relative w-[46px] h-7 rounded-full flex-shrink-0 transition-colors ${esCostoServicio ? "bg-tinta" : "bg-tinta/15"}`}>
+              <span
+                className={`absolute top-[3px] left-[3px] w-[22px] h-[22px] rounded-full bg-white shadow transition-transform ${
+                  esCostoServicio ? "translate-x-[18px]" : ""
                 }`}
-              >
-                <div
-                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                    esCostoServicio ? "translate-x-5" : "translate-x-0.5"
-                  }`}
-                />
-              </div>
-              <div>
-                <span className="text-[13px] font-display text-text-primary">
-                  Producto consumido en servicio
-                </span>
-                <p className="text-[10px] font-display text-text-secondary">
-                  Tinte, químicos, productos que usaste en clientas
-                </p>
-              </div>
-            </label>
-          </div>
+              />
+            </span>
+            <span>
+              <span className="block text-[13.5px] font-display font-bold text-text-primary">Producto consumido en servicio</span>
+              <span className="block text-[11.5px] text-text-secondary">Tinte, químicos, productos que usaste en clientas</span>
+            </span>
+          </button>
         )}
       </div>
 
-      <div className="flex gap-3">
+      <div className="grid grid-cols-2 gap-2">
         <button
           onClick={onClose}
-          className="flex-1 py-3 rounded-card border border-border text-[14px] font-display font-medium text-text-secondary active:scale-[0.98] transition-transform"
+          className="py-3.5 rounded-[16px] border border-border text-[14.5px] font-display font-bold text-text-primary active:scale-[0.98] transition-transform"
         >
           Cancelar
         </button>
         <button
           onClick={handleSave}
           disabled={saving || !bolsaId || !monto || Number(monto) <= 0}
-          className="flex-1 py-3 rounded-card text-[14px] font-display font-semibold text-white active:scale-[0.98] transition-transform disabled:opacity-50"
-          style={{
-            backgroundColor: tipo === "ingreso" ? "#10B981" : "#EF4444",
-          }}
+          className="py-3.5 rounded-[16px] bg-mandarina text-tinta text-[14.5px] font-display font-bold active:scale-[0.98] transition-transform disabled:opacity-40"
         >
-          {saving
-            ? "Guardando..."
-            : tipo === "ingreso"
-            ? `+ Agregar`
-            : `- Restar`}
+          {saving ? "Guardando..." : tipo === "ingreso" ? `+ Agregar` : `- Restar`}
         </button>
       </div>
     </Modal>

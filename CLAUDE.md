@@ -15,12 +15,16 @@ Full knowledge base: `JR_CONSULTORIA_APP.md` (update with every significant chan
 ## Style
 
 - All components use `"use client"`
-- Tailwind + inline styles for `salonColor`
-- Mobile-first (iPhone PWA)
-- Font sizes: `text-[11px]` to `text-[14px]`
-- `formatMoney()` for all currency display
+- Marca apalabra (rama `claude/rediseno-apalabra`): papel `#FFF4F9`, tinta `#1C0B14`
+  (dinero y texto), rosa `#D9007A` (marca, nunca estado), mandarina `#FF7A1A` (solo botón
+  principal), patio `#FFC83D` (logros); estados entra `#0E8A5F` / atento `#9A4A00` / sale `#B3261E`
+- Fuentes: Gabarito (`font-brand`, `.font-numbers` para cifras) + Figtree (`font-display`, texto)
+- `salonColor` solo en el avatar del salón (`SalonAvatar`); no pinta botones ni pestañas
+- Primitivas compartidas en `components/ui/Primitives.tsx` e íconos en `components/ui/Icons.tsx`
+- Mobile-first (iPhone PWA), barra inferior de pestañas
+- Font sizes: `text-[11px]` to `text-[14px]` en texto; cifras protagonistas pueden ser mayores
+- `formatMoney()` for all currency display; negativos con signo `−`
 - Framer Motion for animations
-- Warm palette: bg `#F8F3ED`, accent `#7B4F2E`, gold `#C8963C`
 
 ## Git
 

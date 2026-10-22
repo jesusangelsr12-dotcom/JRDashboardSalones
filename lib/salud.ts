@@ -455,11 +455,38 @@ export function calcularSalud(
 export const DOW_LABELS = ["D", "L", "M", "M", "J", "V", "S"];
 export const DOW_LABELS_LARGO = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
+/**
+ * Salud del mes anterior cortada al mismo día que `hoy` (si hoy es 22 oct,
+ * toma del 1 al 22 de sep) para comparar el mes en curso de forma pareja.
+ * Los datos posteriores al corte se descartan antes de calcular.
+ */
+export function calcularSaludMismoTramoAnterior(
+  citas: Cita[],
+  gastos: Gasto[],
+  comisiones: Comision[],
+  gastosFijos: GastoFijo[],
+  bolsas: Bolsa[],
+  year: number,
+  month: number,
+  comisionTarjeta: number = 0,
+  hoy: Date = new Date()
+): { salud: SaludSnapshot; corte: Date } {
+  const inicioPrev = new Date(year, month - 1, 1);
+  const ultimoDia = new Date(inicioPrev.getFullYear(), inicioPrev.getMonth() + 1, 0).getDate();
+  const corte = new Date(inicioPrev.getFullYear(), inicioPrev.getMonth(), Math.min(hoy.getDate(), ultimoDia), 23, 59, 59, 999);
+  const hastaCorte = <T extends { fecha: Date }>(arr: T[]) => arr.filter((x) => x.fecha <= corte);
+  const salud = calcularSalud(
+    hastaCorte(citas), hastaCorte(gastos), hastaCorte(comisiones), gastosFijos, bolsas,
+    inicioPrev.getFullYear(), inicioPrev.getMonth(), comisionTarjeta, corte, FACTOR_RIESGO_DEFAULT, "mes"
+  );
+  return { salud, corte };
+}
+
 export function colorSemaforo(s: Semaforo): { bg: string; fg: string; label: string } {
   switch (s) {
-    case "verde": return { bg: "#E7F4EC", fg: "#1F9D55", label: "Sano" };
-    case "ambar": return { bg: "#FBF0DC", fg: "#C57B14", label: "Atento" };
-    case "rojo": return { bg: "#FBEAE7", fg: "#C0392B", label: "Riesgo" };
-    default: return { bg: "#EDE3D6", fg: "#6B5D50", label: "—" };
+    case "verde": return { bg: "#DDF3EA", fg: "#0E8A5F", label: "Sano" };
+    case "ambar": return { bg: "#FFF0DD", fg: "#9A4A00", label: "Atento" };
+    case "rojo": return { bg: "#FBE4E1", fg: "#B3261E", label: "Riesgo" };
+    default: return { bg: "#F3ECEF", fg: "#7A5F6E", label: "Sin datos" };
   }
 }

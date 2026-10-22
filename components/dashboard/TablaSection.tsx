@@ -6,13 +6,18 @@ import { formatMoney, fechaCorta, mesesDisponibles, costoNeto } from "@/lib/calc
 import type { MetodoPago } from "@/lib/types";
 import { reasignarBolsa } from "@/lib/store";
 import Modal from "@/components/ui/Modal";
+import { mayuscula } from "@/components/ui/Primitives";
+import { IconArrowDown, IconArrowUp, IconChevronDown, IconSearch } from "@/components/ui/Icons";
+
+const DIAS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const claveDia = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 
 interface TablaSectionProps {
   citas: Cita[];
   gastos: Gasto[];
   movimientos: MovimientoBolsa[];
   bolsas: Bolsa[];
-  salonColor: string;
   comisionTarjeta: number;
   onRefresh?: () => void;
 }
@@ -38,7 +43,6 @@ export default function TablaSection({
   gastos,
   movimientos,
   bolsas,
-  salonColor,
   comisionTarjeta,
   onRefresh,
 }: TablaSectionProps) {
@@ -136,209 +140,168 @@ export default function TablaSection({
     { id: "gastos", label: "Gastos" },
   ];
 
+  const visibles = rows.slice(0, 50);
+
   return (
     <section>
       {/* Month selector */}
-      <div className="mb-3">
+      <div className="relative mb-2">
         <select
           value={mesFilter}
           onChange={(e) => setMesFilter(e.target.value)}
-          className="w-full bg-surface border border-border rounded-card px-3 py-2.5 text-[13px] font-display text-text-primary outline-none focus:border-text-secondary transition-colors capitalize"
+          aria-label="Mes"
+          className="w-full appearance-none bg-surface border border-border rounded-[14px] pl-3.5 pr-10 py-3 text-[13.5px] font-display text-text-primary outline-none focus:border-rosa focus:ring-[3px] focus:ring-rosa/10 transition-colors"
         >
           <option value="todos">Todos los meses</option>
           {meses.map((m) => (
             <option key={`${m.year}-${m.month}`} value={`${m.year}-${m.month}`}>
-              {m.label}
+              {mayuscula(m.label)}
             </option>
           ))}
         </select>
+        <IconChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
       </div>
 
       {/* Search */}
-      <div className="relative mb-4">
-        <svg
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary"
-          width="14"
-          height="14"
-          viewBox="0 0 14 14"
-          fill="none"
-        >
-          <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M9.5 9.5L13 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
+      <div className="relative mb-3">
+        <IconSearch size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
         <input
           type="text"
           placeholder="Buscar clienta o servicio..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-surface border border-border rounded-card pl-9 pr-4 py-2.5 text-[13px] font-display text-text-primary placeholder:text-text-secondary/50 outline-none focus:border-text-secondary transition-colors"
+          className="w-full bg-surface border border-border rounded-[14px] pl-10 pr-4 py-3 text-[13.5px] font-display text-text-primary placeholder:text-text-secondary/60 outline-none focus:border-rosa focus:ring-[3px] focus:ring-rosa/10 transition-colors"
         />
       </div>
 
       {/* Filters */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex items-center gap-1.5 mb-1">
         {filters.map((f) => (
           <button
             key={f.id}
             onClick={() => setFilter(f.id)}
-            className={`px-3 py-1.5 rounded-full text-[12px] font-display font-medium transition-all ${
-              filter === f.id
-                ? "text-white"
-                : "text-text-secondary bg-bg border border-border"
+            className={`px-3.5 py-[7px] rounded-full text-[12.5px] font-display font-semibold border transition-all ${
+              filter === f.id ? "bg-tinta border-tinta text-white" : "bg-surface border-border text-text-secondary"
             }`}
-            style={filter === f.id ? { backgroundColor: salonColor } : undefined}
           >
             {f.label}
           </button>
         ))}
-        <span className="ml-auto text-[11px] font-mono text-text-secondary self-center">
-          {rows.length} reg.
-        </span>
+        <span className="ml-auto text-[11.5px] font-numbers text-text-secondary">{rows.length} reg.</span>
       </div>
 
-      {/* Table */}
+      {/* Lista agrupada por día */}
       {rows.length === 0 ? (
         <div className="flex items-center justify-center py-12">
-          <p className="text-[13px] text-text-secondary font-display">
-            {search ? "Sin resultados" : "Sin transacciones"}
-          </p>
+          <p className="text-[13px] text-text-secondary">{search ? "Sin resultados" : "Sin transacciones"}</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {rows.slice(0, 50).map((row) => (
-            <div
-              key={row.id}
-              className="bg-surface rounded-card border border-border px-4 py-3 flex items-center gap-3"
-            >
-              {/* Type indicator */}
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm ${
-                  row.tipo === "cita"
-                    ? "bg-emerald-50 text-emerald-600"
-                    : "bg-red-50 text-red-500"
-                }`}
-              >
-                {row.tipo === "cita" ? "↑" : "↓"}
-              </div>
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <p className="text-[13px] font-display font-medium text-text-primary truncate">
-                    {row.descripcion}
-                  </p>
-                  {row.source === "admin" && (
-                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 flex-shrink-0">
-                      Admin
-                    </span>
-                  )}
-                  {row.source === "bolsa" && (
-                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 flex-shrink-0">
-                      Bolsa
-                    </span>
-                  )}
-                  {/* Auto/Manual badge — solo para gastos */}
-                  {row.tipo === "gasto" && row.origen === "auto" && (
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 flex-shrink-0">
-                      Auto
-                    </span>
-                  )}
-                  {row.tipo === "gasto" && row.origen === "manual" && (
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 flex-shrink-0">
-                      Manual
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <p className="text-[11px] text-text-secondary font-mono truncate">
-                    {fechaCorta(row.fecha)}
-                    {row.detalle && ` · ${row.detalle}`}
-                  </p>
-                  {/* Reasignar button — solo para gastos manuales de bolsa */}
-                  {row.tipo === "gasto" && row.origen === "manual" && row.movimientoId && (
-                    <button
-                      onClick={() => {
-                        setReasignando(row);
-                        setNuevaBolsaId(row.bolsaId || "");
-                      }}
-                      className="text-[10px] font-display font-medium px-1.5 py-0.5 rounded transition-all active:scale-95 flex-shrink-0"
-                      style={{ color: salonColor, backgroundColor: salonColor + "14" }}
-                    >
-                      ✏️ Reasignar
-                    </button>
-                  )}
-                  {/* Los gastos de Sheets no son reasignables en esta versión.
-                      Ver DEUDA-TECNICA.md → "Migración Sheets → Supabase" */}
-                </div>
-              </div>
-
-              {/* Amount + method */}
-              <div className="text-right flex-shrink-0">
-                <p
-                  className={`text-[14px] font-numbers font-medium ${
-                    row.monto >= 0 ? "text-emerald-600" : "text-red-500"
-                  }`}
-                >
-                  {row.monto >= 0 ? "+" : ""}
-                  {formatMoney(Math.abs(row.monto))}
-                </p>
-                {row.metodo === "Tarjeta" && row.monto > 0 && comisionTarjeta > 0 && (
-                  <p className="text-[10px] font-mono text-teal-600">
-                    Neto: {formatMoney(costoNeto(row.monto, "Tarjeta" as MetodoPago, comisionTarjeta))}
+        <div>
+          {visibles.map((row, idx) => {
+            const nuevoDia = idx === 0 || claveDia(visibles[idx - 1].fecha) !== claveDia(row.fecha);
+            const ingreso = row.monto >= 0;
+            return (
+              <div key={row.id}>
+                {nuevoDia && (
+                  <p className="text-[11px] uppercase tracking-[0.07em] text-text-secondary font-display font-bold mt-4 mb-1.5 px-0.5">
+                    {DIAS[row.fecha.getDay()]} {row.fecha.getDate()} {MESES_CORTOS[row.fecha.getMonth()]}
                   </p>
                 )}
-                <p className="text-[10px] text-text-secondary font-mono">
-                  {row.metodo}
-                </p>
+                <div className="bg-surface rounded-[16px] border border-border px-3 py-2.5 mb-1.5 flex items-start gap-2.5">
+                  <span
+                    className={`w-[30px] h-[30px] rounded-full flex items-center justify-center flex-shrink-0 ${
+                      ingreso ? "bg-entra-soft text-entra" : "bg-sale-soft text-sale"
+                    }`}
+                  >
+                    {ingreso ? <IconArrowUp size={15} /> : <IconArrowDown size={15} />}
+                  </span>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-[13.5px] font-display font-semibold text-text-primary truncate">{row.descripcion}</p>
+                      {row.source === "admin" && <Badge className="bg-tinta text-white">Admin</Badge>}
+                      {row.source === "bolsa" && <Badge className="bg-rubor text-rosa">Bolsa</Badge>}
+                      {/* Auto/Manual — solo para gastos */}
+                      {row.tipo === "gasto" && row.origen === "auto" && <Badge className="bg-[#F3ECEF] text-text-secondary">Auto</Badge>}
+                      {row.tipo === "gasto" && row.origen === "manual" && <Badge className="bg-[#FFF0C8] text-[#7A5200]">Manual</Badge>}
+                    </div>
+                    <p className="text-[11.5px] text-text-secondary truncate">
+                      {fechaCorta(row.fecha)}
+                      {row.detalle && ` · ${row.detalle}`}
+                    </p>
+                    {/* Reasignar — solo gastos manuales de bolsa.
+                        Los gastos de Sheets no son reasignables en esta versión.
+                        Ver DEUDA-TECNICA.md → "Migración Sheets → Supabase" */}
+                    {row.tipo === "gasto" && row.origen === "manual" && row.movimientoId && (
+                      <button
+                        onClick={() => {
+                          setReasignando(row);
+                          setNuevaBolsaId(row.bolsaId || "");
+                        }}
+                        className="mt-1 text-[11.5px] font-display font-bold px-2 py-0.5 rounded-[8px] bg-rubor text-rosa active:scale-95 transition-transform"
+                      >
+                        Reasignar bolsa
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Amount + method */}
+                  <div className="text-right flex-shrink-0">
+                    <p className={`text-[14px] font-numbers font-bold ${ingreso ? "text-entra" : "text-sale"}`}>
+                      {ingreso ? "+" : "−"}
+                      {formatMoney(Math.abs(row.monto))}
+                    </p>
+                    {row.metodo === "Tarjeta" && row.monto > 0 && comisionTarjeta > 0 && (
+                      <p className="text-[11px] font-numbers font-semibold text-text-primary">
+                        Neto {formatMoney(costoNeto(row.monto, "Tarjeta" as MetodoPago, comisionTarjeta))}
+                      </p>
+                    )}
+                    <p className="text-[11px] text-text-secondary">{row.metodo}</p>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {rows.length > 50 && (
-            <p className="text-center text-[11px] text-text-secondary font-mono py-3">
-              Mostrando 50 de {rows.length} registros
-            </p>
+            <p className="text-center text-[11.5px] text-text-secondary font-numbers py-3">Mostrando 50 de {rows.length} registros</p>
           )}
         </div>
       )}
 
       {/* Reasignar bolsa modal */}
       <Modal open={!!reasignando} onClose={() => { setReasignando(null); setNuevaBolsaId(""); }}>
-        <h3 className="text-lg font-bold font-display text-text-primary mb-2">
-          Reasignar bolsa
-        </h3>
-        <p className="text-[13px] text-text-secondary mb-4">
-          {reasignando?.descripcion}
-        </p>
+        <h3 className="font-brand text-[20px] font-extrabold tracking-[-0.025em] text-text-primary">Reasignar bolsa</h3>
+        <p className="text-[12.5px] text-text-secondary mt-0.5 mb-4">{reasignando?.descripcion}</p>
 
-        <label className="text-[11px] uppercase tracking-[0.08em] text-text-secondary font-display font-medium mb-1.5 block">
-          Nueva bolsa
-        </label>
-        <select
-          value={nuevaBolsaId}
-          onChange={(e) => setNuevaBolsaId(e.target.value)}
-          className="w-full bg-bg border border-border rounded-card px-3 py-2.5 text-[13px] font-display text-text-primary outline-none mb-5"
-        >
-          <option value="">Seleccionar bolsa</option>
-          {bolsas.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.nombre}
-            </option>
-          ))}
-        </select>
+        <label className="text-[12px] text-text-secondary font-display font-semibold mb-1.5 block">Nueva bolsa</label>
+        <div className="relative mb-5">
+          <select
+            value={nuevaBolsaId}
+            onChange={(e) => setNuevaBolsaId(e.target.value)}
+            className="w-full appearance-none bg-bg border border-border rounded-[12px] px-3 py-2.5 text-[14px] font-display text-text-primary outline-none focus:border-rosa"
+          >
+            <option value="">Seleccionar bolsa</option>
+            {bolsas.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.nombre}
+              </option>
+            ))}
+          </select>
+          <IconChevronDown size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+        </div>
 
-        <div className="flex gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => { setReasignando(null); setNuevaBolsaId(""); }}
-            className="flex-1 py-3 rounded-card border border-border text-[14px] font-display font-medium text-text-secondary active:scale-[0.98] transition-transform"
+            className="py-3.5 rounded-[16px] border border-border text-[14.5px] font-display font-bold text-text-primary active:scale-[0.98] transition-transform"
           >
             Cancelar
           </button>
           <button
             onClick={handleReasignar}
             disabled={saving || !nuevaBolsaId || nuevaBolsaId === reasignando?.bolsaId}
-            className="flex-1 py-3 rounded-card text-[14px] font-display font-semibold text-white active:scale-[0.98] transition-transform disabled:opacity-50"
-            style={{ backgroundColor: salonColor }}
+            className="py-3.5 rounded-[16px] bg-mandarina text-tinta text-[14.5px] font-display font-bold active:scale-[0.98] transition-transform disabled:opacity-40"
           >
             {saving ? "Guardando..." : "Confirmar"}
           </button>
@@ -346,4 +309,8 @@ export default function TablaSection({
       </Modal>
     </section>
   );
+}
+
+function Badge({ children, className }: { children: React.ReactNode; className: string }) {
+  return <span className={`text-[11px] font-display font-bold px-1.5 py-[1px] rounded-[6px] flex-shrink-0 ${className}`}>{children}</span>;
 }

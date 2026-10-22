@@ -1,4 +1,4 @@
-const CACHE_NAME = "jr-dashboard-v2";
+const CACHE_NAME = "jr-dashboard-v3";
 const PRECACHE_URLS = ["/", "/manifest.json"];
 
 // Install: precache shell

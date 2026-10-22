@@ -1,11 +1,11 @@
 {
-  "name": "JR Consulting Dashboard",
-  "short_name": "JR",
-  "description": "Dashboard financiero multi-salón",
+  "name": "apalabra · Panel de negocios",
+  "short_name": "apalabra",
+  "description": "Panel financiero multi-salón",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F5F5F7",
-  "theme_color": "#1C1C1E",
+  "background_color": "#FFF4F9",
+  "theme_color": "#FFF4F9",
   "orientation": "portrait",
   "icons": [
     {

@@ -2,12 +2,12 @@
 
 import type { Cita, Gasto, MovimientoBolsa } from "@/lib/types";
 import { formatMoney, costoNeto } from "@/lib/calculations";
+import { METODO_COLOR } from "@/components/ui/Primitives";
 
 interface ResumenMetodoPagoProps {
   citas: Cita[];
   gastos: Gasto[];
   movimientos: MovimientoBolsa[];
-  salonColor: string;
   comisionTarjeta?: number;
 }
 
@@ -17,17 +17,10 @@ const METODO_ICONS: Record<string, string> = {
   Transferencia: "Tr",
 };
 
-const METODO_COLORS: Record<string, string> = {
-  Efectivo: "#10B981",
-  Tarjeta: "#6366F1",
-  Transferencia: "#F59E0B",
-};
-
 export default function ResumenMetodoPago({
   citas,
   gastos,
   movimientos,
-  salonColor,
   comisionTarjeta = 0,
 }: ResumenMetodoPagoProps) {
   // Calcular entradas por método (citas + ingresos de movimientos)
@@ -65,56 +58,38 @@ export default function ResumenMetodoPago({
   const totalGeneral = totales.reduce((s, t) => s + t.neto, 0);
 
   return (
-    <div className="bg-surface rounded-card border border-border p-4">
-      <h4 className="text-[11px] uppercase tracking-[0.08em] text-text-secondary font-display font-medium mb-3">
+    <div className="bg-surface rounded-card border border-border p-3.5">
+      <h4 className="text-[11px] uppercase tracking-[0.07em] text-text-secondary font-display font-bold mb-1">
         Dinero por método de pago
       </h4>
 
-      <div className="space-y-3">
-        {totales.map((t) => {
-          const color = METODO_COLORS[t.metodo];
-          return (
-            <div key={t.metodo} className="flex items-center gap-3">
-              {/* Icon */}
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-mono font-bold text-white"
-                style={{ backgroundColor: color }}
-              >
-                {METODO_ICONS[t.metodo]}
-              </div>
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <span className="text-[13px] font-display font-medium text-text-primary">
-                    {t.metodo}
-                  </span>
-                  <span
-                    className="font-numbers text-[15px] font-medium"
-                    style={{ color: t.neto >= 0 ? color : "#EF4444" }}
-                  >
-                    {formatMoney(t.neto)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3 text-[10px] font-mono text-text-secondary mt-0.5">
-                  <span>+{formatMoney(t.entradas)}</span>
-                  <span>-{formatMoney(t.salidas)}</span>
-                </div>
-              </div>
+      {totales.map((t) => (
+        <div key={t.metodo} className="flex items-center gap-3 py-2.5 border-b border-border">
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-numbers font-extrabold"
+            style={{ backgroundColor: METODO_COLOR[t.metodo], color: t.metodo === "Transferencia" ? "#1C0B14" : "#FFFFFF" }}
+          >
+            {METODO_ICONS[t.metodo]}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <span className="text-[13.5px] font-display font-bold text-text-primary">{t.metodo}</span>
+              <span className={`font-numbers text-[15px] font-bold ${t.neto >= 0 ? "text-text-primary" : "text-sale"}`}>
+                {formatMoney(t.neto)}
+              </span>
             </div>
-          );
-        })}
-      </div>
+            <div className="flex items-center gap-2.5 text-[11.5px] font-numbers mt-0.5">
+              <span className="text-entra">+{formatMoney(t.entradas)}</span>
+              <span className="text-sale">−{formatMoney(t.salidas)}</span>
+            </div>
+          </div>
+        </div>
+      ))}
 
       {/* Total */}
-      <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
-        <span className="text-[12px] font-display font-medium text-text-secondary">
-          Total neto
-        </span>
-        <span
-          className="font-numbers text-lg font-medium"
-          style={{ color: totalGeneral >= 0 ? salonColor : "#EF4444" }}
-        >
+      <div className="pt-2.5 flex items-center justify-between">
+        <span className="text-[13px] font-display font-semibold text-text-secondary">Total neto</span>
+        <span className={`font-numbers text-[18px] font-bold ${totalGeneral >= 0 ? "text-text-primary" : "text-sale"}`}>
           {formatMoney(totalGeneral)}
         </span>
       </div>

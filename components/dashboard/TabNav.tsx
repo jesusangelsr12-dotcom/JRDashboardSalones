@@ -1,40 +1,52 @@
 "use client";
 
+import {
+  IconTabResumen,
+  IconTabCierres,
+  IconTabSalud,
+  IconTabGraficas,
+  IconTabMovimientos,
+} from "@/components/ui/Icons";
+
 export type TabId = "resumen" | "bolsas" | "graficas" | "tabla" | "salud";
 
 interface TabNavProps {
   active: TabId;
   onChange: (tab: TabId) => void;
-  salonColor: string;
 }
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: "resumen", label: "Resumen" },
-  { id: "bolsas", label: "Bolsas" },
-  { id: "graficas", label: "Gráficas" },
-  { id: "tabla", label: "Tabla" },
-  { id: "salud", label: "Salud" },
+// Los TabId internos no cambian; solo las etiquetas: Bolsas → Cierres, Tabla → Movimientos.
+const TABS: { id: TabId; label: string; Icon: (p: { size?: number }) => JSX.Element }[] = [
+  { id: "resumen", label: "Resumen", Icon: IconTabResumen },
+  { id: "bolsas", label: "Cierres", Icon: IconTabCierres },
+  { id: "salud", label: "Salud", Icon: IconTabSalud },
+  { id: "graficas", label: "Gráficas", Icon: IconTabGraficas },
+  { id: "tabla", label: "Movimientos", Icon: IconTabMovimientos },
 ];
 
-export default function TabNav({ active, onChange, salonColor }: TabNavProps) {
+export const TAB_IDS = TABS.map((t) => t.id);
+
+// Barra inferior fija, al alcance del pulgar.
+export default function TabNav({ active, onChange }: TabNavProps) {
   return (
-    <nav className="flex gap-1 bg-[#EFE6DA] rounded-[14px] p-1 mb-6">
-      {TABS.map((tab) => {
-        const isActive = tab.id === active;
+    <nav
+      className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-app z-40 bg-surface/95 backdrop-blur-md border-t border-border grid grid-cols-5 px-1 pt-2"
+      style={{ paddingBottom: "calc(0.6rem + var(--safe-area-bottom))" }}
+      aria-label="Secciones del salón"
+    >
+      {TABS.map(({ id, label, Icon }) => {
+        const isActive = id === active;
         return (
           <button
-            key={tab.id}
-            onClick={() => onChange(tab.id)}
-            className={`flex-1 py-2 text-[11px] font-display font-medium rounded-[11px] transition-all duration-200 ${
-              isActive
-                ? "text-white shadow-sm"
-                : "text-text-secondary hover:text-text-primary"
+            key={id}
+            onClick={() => onChange(id)}
+            aria-current={isActive ? "page" : undefined}
+            className={`flex flex-col items-center gap-[3px] text-[11px] font-display font-semibold transition-colors ${
+              isActive ? "text-rosa" : "text-text-secondary"
             }`}
-            style={
-              isActive ? { backgroundColor: salonColor } : undefined
-            }
           >
-            {tab.label}
+            <Icon size={23} />
+            <span>{label}</span>
           </button>
         );
       })}

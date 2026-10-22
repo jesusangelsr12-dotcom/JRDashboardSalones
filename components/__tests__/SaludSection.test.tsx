@@ -46,14 +46,14 @@ describe("SaludSection — render + interacciones", () => {
   });
 
   it("muestra el hero con utilidad del mes y el mes actual", () => {
-    render(<SaludSection salon={salon} citas={citas} gastos={[]} salonColor={salon.color} />);
+    render(<SaludSection salon={salon} citas={citas} gastos={[]} />);
     const hoy = new Date();
     expect(screen.getByText(`Utilidad de ${MESES[hoy.getMonth()]}`)).toBeInTheDocument();
     expect(screen.getByText(`${MESES[hoy.getMonth()]} ${hoy.getFullYear()}`)).toBeInTheDocument();
   });
 
   it("renderiza las secciones de KPIs y operación", () => {
-    render(<SaludSection salon={salon} citas={citas} gastos={[]} salonColor={salon.color} />);
+    render(<SaludSection salon={salon} citas={citas} gastos={[]} />);
     expect(screen.getByText("Margen neto")).toBeInTheDocument();
     expect(screen.getByText("Costo de personal")).toBeInTheDocument();
     expect(screen.getByText("Renta / ingreso")).toBeInTheDocument();
@@ -63,7 +63,7 @@ describe("SaludSection — render + interacciones", () => {
   });
 
   it("el botón 'Mes siguiente' está deshabilitado en el mes actual y 'Mes anterior' navega", () => {
-    render(<SaludSection salon={salon} citas={citas} gastos={[]} salonColor={salon.color} />);
+    render(<SaludSection salon={salon} citas={citas} gastos={[]} />);
     expect(screen.getByLabelText("Mes siguiente")).toBeDisabled();
 
     fireEvent.click(screen.getByLabelText("Mes anterior"));
@@ -73,7 +73,7 @@ describe("SaludSection — render + interacciones", () => {
   });
 
   it("lista la clienta en riesgo y permite marcarla como contactada (persiste en localStorage)", () => {
-    const { container } = render(<SaludSection salon={salon} citas={citas} gastos={[]} salonColor={salon.color} />);
+    const { container } = render(<SaludSection salon={salon} citas={citas} gastos={[]} />);
     expect(screen.getByText("Maria Lopez")).toBeInTheDocument();
     expect(container).toHaveTextContent("0/1 contactadas");
 
@@ -86,7 +86,7 @@ describe("SaludSection — render + interacciones", () => {
   });
 
   it("al tocar un KPI abre el detalle con fórmula y números reales", () => {
-    render(<SaludSection salon={salon} citas={citas} gastos={[]} salonColor={salon.color} />);
+    render(<SaludSection salon={salon} citas={citas} gastos={[]} />);
     fireEvent.click(screen.getByText("Margen neto"));
     expect(screen.getByText("Fórmula")).toBeInTheDocument();
     expect(screen.getByText("Con tus números")).toBeInTheDocument();
@@ -96,7 +96,7 @@ describe("SaludSection — render + interacciones", () => {
   });
 
   it("cambia a vista Año (YTD) y muestra el resumen del año", () => {
-    render(<SaludSection salon={salon} citas={citas} gastos={[]} salonColor={salon.color} />);
+    render(<SaludSection salon={salon} citas={citas} gastos={[]} />);
     fireEvent.click(screen.getByText("Año (YTD)"));
     const hoy = new Date();
     expect(screen.getByText(`Utilidad de ${hoy.getFullYear()}`)).toBeInTheDocument();
@@ -105,7 +105,7 @@ describe("SaludSection — render + interacciones", () => {
   });
 
   it("al tocar una clienta en riesgo muestra su historial de citas", () => {
-    render(<SaludSection salon={salon} citas={citas} gastos={[]} salonColor={salon.color} />);
+    render(<SaludSection salon={salon} citas={citas} gastos={[]} />);
     fireEvent.click(screen.getByText("Maria Lopez"));
     expect(screen.getByText("Historial de citas")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Cerrar"));
@@ -113,7 +113,7 @@ describe("SaludSection — render + interacciones", () => {
   });
 
   it("expande el Estado de Resultados detallado", () => {
-    render(<SaludSection salon={salon} citas={citas} gastos={[]} salonColor={salon.color} />);
+    render(<SaludSection salon={salon} citas={citas} gastos={[]} />);
     expect(screen.queryByText("(+) Ingresos brutos")).not.toBeInTheDocument();
     fireEvent.click(screen.getByText("Estado de resultados detallado"));
     expect(screen.getByText("(+) Ingresos brutos")).toBeInTheDocument();

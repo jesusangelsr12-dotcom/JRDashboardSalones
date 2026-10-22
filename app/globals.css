@@ -2,16 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap');
-
 :root {
-  --color-bg: #F8F3ED;
+  --color-bg: #FFF4F9;
   --color-surface: #FFFFFF;
-  --color-border: #ECE3D8;
-  --color-text-primary: #1A1410;
-  --color-text-secondary: #6B5D50;
-  --color-accent: #7B4F2E;
-  --color-gold: #C8963C;
+  --color-border: #EFDFE7;
+  --color-text-primary: #1C0B14;
+  --color-text-secondary: #7A5F6E;
+  --color-accent: #D9007A;
+  --color-gold: #FFC83D;
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-left: env(safe-area-inset-left, 0px);
@@ -24,7 +22,7 @@
 }
 
 html {
-  font-family: 'Syne', sans-serif;
+  font-family: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
   background-color: var(--color-bg);
   color: var(--color-text-primary);
 }
@@ -49,9 +47,11 @@ body {
   position: relative;
 }
 
-/* Number styling */
+/* Cifras: Gabarito con números tabulares */
 .font-numbers {
-  font-family: 'DM Mono', monospace;
+  font-family: var(--font-gabarito), var(--font-figtree), ui-sans-serif, sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
 /* Scrollbar hidden for mobile feel */
@@ -66,10 +66,32 @@ body {
 }
 
 .skeleton {
-  background: linear-gradient(90deg, #ECE3D8 25%, #F6EFE6 50%, #ECE3D8 75%);
+  background: linear-gradient(90deg, #F6E6EE 25%, #FFF1F7 50%, #F6E6EE 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
-  border-radius: 10px;
+  border-radius: 12px;
+}
+
+@keyframes sheetUp {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+}
+
+@keyframes pulseDot {
+  50% { box-shadow: 0 0 0 4px rgba(28, 11, 20, 0.12); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* Mes en curso en gráficas: rayado para no leerlo como mes completo */
+.barra-parcial {
+  background: repeating-linear-gradient(135deg, rgba(217, 0, 122, 0.75) 0 5px, rgba(217, 0, 122, 0.32) 5px 9px);
 }
 
 /* Prevent overscroll bounce on iOS */

@@ -55,7 +55,7 @@ export default function NuevoSalonPage() {
       <div className="flex items-center gap-3 mb-2 pt-4">
         <button
           onClick={() => router.back()}
-          className="w-9 h-9 rounded-full bg-surface border border-border flex items-center justify-center active:scale-95 transition-transform"
+          className="w-[38px] h-[38px] rounded-full bg-surface border border-border flex items-center justify-center active:scale-95 transition-transform"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path
@@ -67,7 +67,7 @@ export default function NuevoSalonPage() {
             />
           </svg>
         </button>
-        <h1 className="text-xl font-bold font-display text-text-primary">
+        <h1 className="font-brand text-[26px] font-extrabold tracking-[-0.03em] text-text-primary">
           Nuevo salón
         </h1>
       </div>
@@ -89,7 +89,7 @@ export default function NuevoSalonPage() {
               onChange={(e) => setNombre(e.target.value)}
               placeholder="Ej: Martha Rdz Stylist"
               autoFocus
-              className="w-full bg-surface border border-border rounded-card px-4 py-3.5 text-[16px] font-display text-text-primary placeholder:text-text-secondary/40 outline-none focus:border-text-secondary transition-colors"
+              className="w-full bg-surface border border-border rounded-card px-4 py-3.5 text-[16px] font-display text-text-primary placeholder:text-text-secondary/40 outline-none focus:border-rosa transition-colors"
             />
           </div>
 
@@ -136,10 +136,9 @@ export default function NuevoSalonPage() {
           <button
             onClick={() => setStep(2)}
             disabled={!nombre.trim()}
-            className={`w-full py-3.5 rounded-card text-[14px] font-display font-semibold text-white active:scale-[0.98] transition-all ${
+            className={`w-full py-3.5 rounded-card text-[14px] font-display font-bold text-tinta bg-mandarina active:scale-[0.98] transition-all ${
               !nombre.trim() ? "opacity-40" : ""
             }`}
-            style={{ backgroundColor: color }}
           >
             Siguiente
           </button>
@@ -161,7 +160,7 @@ export default function NuevoSalonPage() {
                     ? "text-white border-transparent"
                     : "bg-surface border-border text-text-secondary"
                 }`}
-                style={dataSource === "sheets" ? { backgroundColor: color } : undefined}
+                style={dataSource === "sheets" ? { backgroundColor: "#1C0B14" } : undefined}
               >
                 Google Sheets
               </button>
@@ -172,7 +171,7 @@ export default function NuevoSalonPage() {
                     ? "text-white border-transparent"
                     : "bg-surface border-border text-text-secondary"
                 }`}
-                style={dataSource === "neon" ? { backgroundColor: color } : undefined}
+                style={dataSource === "neon" ? { backgroundColor: "#1C0B14" } : undefined}
               >
                 Base de datos (Neon)
               </button>
@@ -186,7 +185,7 @@ export default function NuevoSalonPage() {
                   onChange={(e) => setSheetId(e.target.value)}
                   placeholder="1BxiMkKeFjR..."
                   autoFocus
-                  className="w-full bg-surface border border-border rounded-card px-4 py-3.5 text-[14px] font-mono text-text-primary placeholder:text-text-secondary/40 outline-none focus:border-text-secondary transition-colors"
+                  className="w-full bg-surface border border-border rounded-card px-4 py-3.5 text-[14px] font-mono text-text-primary placeholder:text-text-secondary/40 outline-none focus:border-rosa transition-colors"
                 />
                 <p className="text-[11px] text-text-secondary font-display mt-2">
                   Encuéntralo en la URL de tu Google Sheet entre /d/ y /edit
@@ -200,7 +199,7 @@ export default function NuevoSalonPage() {
                   onChange={(e) => setNeonSalonId(e.target.value)}
                   placeholder="fe431f09-608e-45e8-bd35-a355d3c0421d"
                   autoFocus
-                  className="w-full bg-surface border border-border rounded-card px-4 py-3.5 text-[14px] font-mono text-text-primary placeholder:text-text-secondary/40 outline-none focus:border-text-secondary transition-colors"
+                  className="w-full bg-surface border border-border rounded-card px-4 py-3.5 text-[14px] font-mono text-text-primary placeholder:text-text-secondary/40 outline-none focus:border-rosa transition-colors"
                 />
                 <p className="text-[11px] text-text-secondary font-display mt-2">
                   ID del salón en la tabla &quot;salones&quot; de la base de datos Neon
@@ -228,8 +227,7 @@ export default function NuevoSalonPage() {
             <button
               onClick={handleCreate}
               disabled={creating}
-              className="flex-1 py-3.5 rounded-card text-[14px] font-display font-semibold text-white active:scale-[0.98] transition-all"
-              style={{ backgroundColor: color }}
+              className="flex-1 py-3.5 rounded-card text-[14.5px] font-display font-bold text-tinta bg-mandarina active:scale-[0.98] transition-all disabled:opacity-40"
             >
               {creating ? "Creando..." : "Crear salón"}
             </button>

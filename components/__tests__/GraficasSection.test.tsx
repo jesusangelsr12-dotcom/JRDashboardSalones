@@ -15,7 +15,7 @@ const gastos: Gasto[] = [
 
 describe("GraficasSection — render y cambio de vistas (smoke)", () => {
   it("renderiza las pestañas mensual/anual y las 4 vistas de gráfica", () => {
-    render(<GraficasSection citas={citas} gastos={gastos} salonColor="#7B4F2E" comisionTarjeta={0} />);
+    render(<GraficasSection citas={citas} gastos={gastos} comisionTarjeta={0} />);
     expect(screen.getByText("Evolución")).toBeInTheDocument();
     expect(screen.getByText("Servicios")).toBeInTheDocument();
     expect(screen.getByText("Método")).toBeInTheDocument();
@@ -23,7 +23,7 @@ describe("GraficasSection — render y cambio de vistas (smoke)", () => {
   });
 
   it("cambiar entre vistas no rompe el render", () => {
-    render(<GraficasSection citas={citas} gastos={gastos} salonColor="#7B4F2E" comisionTarjeta={0} />);
+    render(<GraficasSection citas={citas} gastos={gastos} comisionTarjeta={0} />);
     for (const label of ["Servicios", "Método", "Gastos", "Evolución"]) {
       fireEvent.click(screen.getByText(label));
       // la barra de vistas sigue presente tras cada cambio
@@ -32,7 +32,7 @@ describe("GraficasSection — render y cambio de vistas (smoke)", () => {
   });
 
   it("alterna a la vista anual sin romperse", () => {
-    render(<GraficasSection citas={citas} gastos={gastos} salonColor="#7B4F2E" comisionTarjeta={0} />);
+    render(<GraficasSection citas={citas} gastos={gastos} comisionTarjeta={0} />);
     const anual = screen.getByText((t) => /anual/i.test(t));
     fireEvent.click(anual);
     expect(screen.getByText("Evolución")).toBeInTheDocument();

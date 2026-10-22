@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useParams } from "next/navigation";
 import type { Salon, Cita, Gasto, Comision, GastoAdmin, MovimientoBolsa, ResumenSemanal as ResumenType } from "@/lib/types";
 import { getSalon, getAcumulados, getGastosAdmin, getMovimientosBolsa } from "@/lib/store";
 import { fetchSalonData } from "@/lib/sheets";
 import { fetchSalonDataNeon } from "@/lib/neon";
 import { calcularResumenSemanal } from "@/lib/calculations";
+import { calcularSalud } from "@/lib/salud";
 import { exportarDatosXlsx } from "@/lib/exportXlsx";
 import { getCierres } from "@/lib/store";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import TabNav, { type TabId } from "@/components/dashboard/TabNav";
+import TabNav, { type TabId, TAB_IDS } from "@/components/dashboard/TabNav";
 import ResumenSemanal from "@/components/dashboard/ResumenSemanal";
 import BolsasSection from "@/components/dashboard/BolsasSection";
 import GraficasSection from "@/components/dashboard/GraficasSection";
@@ -42,6 +43,12 @@ export default function SalonDashboard() {
   useEffect(() => {
     loadSalon();
   }, [loadSalon]);
+
+  // Al cambiar de salón desde el encabezado se conserva la pestaña (?tab=)
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab && (TAB_IDS as string[]).includes(tab)) setActiveTab(tab as TabId);
+  }, []);
 
   // Refrescar al volver el foco solo si pasó tiempo suficiente (evita refetch
   // en cada cambio de pestaña/app). Sigue tomando cambios de config tras ~2 min.
@@ -147,6 +154,16 @@ export default function SalonDashboard() {
     loadData();
   }, [loadData]);
 
+  // Semáforo global del mes para el encabezado
+  const semaforo = useMemo(() => {
+    if (!salon || loading || citas.length === 0) return undefined;
+    const hoy = new Date();
+    return calcularSalud(
+      citas, gastos, comisiones, salon.gastosFijos, salon.bolsas,
+      hoy.getFullYear(), hoy.getMonth(), salon.comisionTarjeta ?? 0, hoy
+    ).semaforoGlobal;
+  }, [salon, citas, gastos, comisiones, loading]);
+
   const handleExportXlsx = async () => {
     if (!salon) return;
     const cierres = await getCierres(salon.id);
@@ -156,14 +173,14 @@ export default function SalonDashboard() {
   // Loading skeleton
   if (!salon) {
     return (
-      <main className="p-6 pt-14">
-        <div className="skeleton h-6 w-32 mb-2" />
-        <div className="skeleton h-4 w-48 mb-8" />
-        <div className="skeleton h-10 w-full mb-6 rounded-[10px]" />
-        <div className="grid grid-cols-2 gap-3">
-          <div className="skeleton h-24 col-span-2" />
-          <div className="skeleton h-20" />
-          <div className="skeleton h-20" />
+      <main className="px-4 pt-14">
+        <div className="skeleton h-11 w-11 rounded-full mb-3" />
+        <div className="skeleton h-6 w-48 mb-2" />
+        <div className="skeleton h-4 w-40 mb-6" />
+        <div className="grid grid-cols-2 gap-2.5">
+          <div className="skeleton h-44 col-span-2 rounded-[22px]" />
+          <div className="skeleton h-24" />
+          <div className="skeleton h-24" />
           <div className="skeleton h-28 col-span-2" />
         </div>
       </main>
@@ -171,50 +188,47 @@ export default function SalonDashboard() {
   }
 
   return (
-    <main className="p-6 pb-10">
+    <main className="px-4" style={{ paddingBottom: "calc(6.5rem + var(--safe-area-bottom))" }}>
       <FadeIn>
-        <DashboardHeader salon={salon} />
+        <DashboardHeader salon={salon} semaforo={semaforo} tab={activeTab} onExport={handleExportXlsx} />
       </FadeIn>
 
       {/* Error banner */}
       {error && (
         <FadeIn delay={0.1}>
-          <div className="bg-red-50 border border-red-200 rounded-card px-4 py-3 mb-4">
-            <p className="text-[13px] text-red-600 font-display">{error}</p>
+          <div className="bg-sale-soft border border-sale/20 rounded-[16px] px-4 py-3 mb-3">
+            <p className="text-[13px] text-sale font-display font-medium">{error}</p>
           </div>
         </FadeIn>
       )}
 
-      {/* Tab navigation */}
-      <FadeIn delay={0.15}>
-        <TabNav
-          active={activeTab}
-          onChange={setActiveTab}
-          salonColor={salon.color}
-        />
-      </FadeIn>
-
       {/* Tab content */}
       {loading ? (
-        <div className="space-y-3">
-          <div className="skeleton h-24 w-full" />
-          <div className="grid grid-cols-2 gap-3">
-            <div className="skeleton h-20" />
-            <div className="skeleton h-20" />
+        <div className="space-y-2.5">
+          <div className="skeleton h-44 w-full rounded-[22px]" />
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="skeleton h-24" />
+            <div className="skeleton h-24" />
           </div>
           <div className="skeleton h-28 w-full" />
           <div className="skeleton h-32 w-full" />
         </div>
       ) : (
-        <FadeIn delay={0.2} key={activeTab}>
+        <FadeIn delay={0.05} key={activeTab}>
           {activeTab === "resumen" && resumen && (
             <ResumenSemanal
               resumen={resumen}
-              salonColor={salon.color}
               movimientos={movimientos}
               gastosFijos={salon.gastosFijos}
               gastos={gastos}
               comisiones={comisiones}
+              citas={citas}
+              comisionTarjeta={salon.comisionTarjeta ?? 0}
+              bolsaDefaultNombre={salon.bolsas.find((b) => b.id === salon.bolsaDefaultGastosId)?.nombre}
+              onVerCierres={() => {
+                setActiveTab("bolsas");
+                window.scrollTo({ top: 0 });
+              }}
             />
           )}
 
@@ -222,7 +236,6 @@ export default function SalonDashboard() {
             <BolsasSection
               resumen={resumen}
               salon={salon}
-              salonColor={salon.color}
               citas={citas}
               gastos={gastos}
               comisiones={comisiones}
@@ -237,7 +250,6 @@ export default function SalonDashboard() {
               citas={citas}
               gastos={gastos}
               comisiones={comisiones}
-              salonColor={salon.color}
               comisionTarjeta={salon.comisionTarjeta ?? 0}
             />
           )}
@@ -248,7 +260,6 @@ export default function SalonDashboard() {
               gastos={gastos}
               movimientos={movimientos}
               bolsas={salon.bolsas}
-              salonColor={salon.color}
               comisionTarjeta={salon.comisionTarjeta ?? 0}
               onRefresh={loadData}
             />
@@ -260,7 +271,6 @@ export default function SalonDashboard() {
               citas={citas}
               gastos={gastos}
               comisiones={comisiones}
-              salonColor={salon.color}
             />
           )}
         </FadeIn>
@@ -271,28 +281,20 @@ export default function SalonDashboard() {
         <UpdateButton />
       </div>
 
-      {/* Floating action buttons — bottom right */}
-      <div className="fixed bottom-6 right-6 flex flex-col gap-2 items-end z-50">
-        {/* XLSX export — subtle, small */}
-        <button
-          onClick={handleExportXlsx}
-          className="w-9 h-9 rounded-full bg-surface border border-border flex items-center justify-center opacity-40 hover:opacity-100 active:scale-90 transition-all shadow-sm"
-          title="Descargar Excel"
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M7 1V9M7 9L4 6.5M7 9L10 6.5" stroke="#7C7C8A" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M2 10V12H12V10" stroke="#7C7C8A" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-
-      </div>
+      {/* Barra inferior */}
+      <TabNav
+        active={activeTab}
+        onChange={(t) => {
+          setActiveTab(t);
+          window.scrollTo({ top: 0 });
+        }}
+      />
 
       {/* Movimiento de bolsa modal */}
       <MovimientoBolsaModal
         open={showMovimientoModal}
         onClose={() => setShowMovimientoModal(false)}
         salonId={salon.id}
-        salonColor={salon.color}
         bolsas={salon.bolsas}
         onSaved={loadData}
       />

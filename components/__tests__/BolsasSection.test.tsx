@@ -56,20 +56,20 @@ describe("BolsasSection — copia para WhatsApp incluye gastos fijos", () => {
 
   it("renderiza las bolsas y el botón de copiar", () => {
     render(
-      <BolsasSection resumen={resumen} salon={salon} salonColor={salon.color}
+      <BolsasSection resumen={resumen} salon={salon}
         citas={[]} gastos={[]} movimientos={[]} onCierreCompleto={() => {}} onMovimiento={() => {}} />
     );
     expect(screen.getByText("A repartir")).toBeInTheDocument();
-    expect(screen.getByText("Copiar")).toBeInTheDocument();
+    expect(screen.getByText("Copiar para WhatsApp")).toBeInTheDocument();
   });
 
   it("el texto copiado lista bolsas y gastos fijos prorrateados, sin secciones ni totales", async () => {
     render(
-      <BolsasSection resumen={resumen} salon={salon} salonColor={salon.color}
+      <BolsasSection resumen={resumen} salon={salon}
         citas={[]} gastos={[]} movimientos={[]} onCierreCompleto={() => {}} onMovimiento={() => {}} />
     );
 
-    fireEvent.click(screen.getByText("Copiar"));
+    fireEvent.click(screen.getByText("Copiar para WhatsApp"));
     await screen.findByText("Copiado"); // confirma que el copy resolvió
 
     expect(writeText).toHaveBeenCalledTimes(1);
@@ -109,12 +109,16 @@ describe("BolsasSection — copia para WhatsApp incluye gastos fijos", () => {
       },
     ]);
     render(
-      <BolsasSection resumen={resumen} salon={salon} salonColor={salon.color}
+      <BolsasSection resumen={resumen} salon={salon}
         citas={[]} gastos={[]} movimientos={[]} onCierreCompleto={() => {}} onMovimiento={() => {}} />
     );
 
-    fireEvent.click(await screen.findByText("1 semanas"));
-    fireEvent.click(screen.getByText("Semana 17 – 23 Ago 2026"));
+    // El historial ya viene abierto: basta con desplegar la semana
+    expect(await screen.findByText("1 semanas")).toBeInTheDocument();
+    fireEvent.click(await screen.findByText("Semana 17 – 23 Ago 2026"));
+    // Al desplegar se ven los ingresos y gastos que guarda el cierre
+    expect(await screen.findByText("$12,000")).toBeInTheDocument();
+    expect(screen.getByText("−$2,500")).toBeInTheDocument();
     fireEvent.click(await screen.findByText("Copiar semana"));
     await screen.findByText("Copiado");
 

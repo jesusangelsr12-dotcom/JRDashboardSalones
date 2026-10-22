@@ -20,75 +20,36 @@ export default function BolsaCard({
   gastosAsignados = 0,
 }: BolsaCardProps) {
   return (
-    <div className="relative overflow-hidden bg-surface rounded-card border border-border p-4">
-      {/* Color accent left edge */}
-      <div
-        className="absolute top-0 left-0 w-1 h-full"
-        style={{ backgroundColor: color }}
-      />
-
-      <div className="flex items-start justify-between mb-3 ml-2">
-        <div>
-          <h4 className="text-[14px] font-display font-semibold text-text-primary leading-tight">
-            {nombre}
-          </h4>
-          <p className="text-[11px] font-mono text-text-secondary mt-0.5">
-            {porcentaje}% del libre
-          </p>
+    <div className="bg-surface rounded-[18px] border border-border px-3.5 py-3">
+      <div className="flex items-center gap-2.5">
+        <span className="w-3 h-3 rounded-[4px] flex-shrink-0" style={{ backgroundColor: color }} />
+        <div className="flex-1 min-w-0">
+          <h4 className="text-[14px] font-display font-bold text-text-primary leading-tight truncate">{nombre}</h4>
+          <p className="text-[11.5px] text-text-secondary">{porcentaje}% del libre</p>
         </div>
-
-        {/* Percentage badge */}
-        <div
-          className="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium"
-          style={{
-            backgroundColor: color + "14",
-            color: color,
-          }}
-        >
-          {porcentaje}%
-        </div>
+        <span className="text-[12px] font-numbers font-bold bg-bg border border-border px-2 py-0.5 rounded-full">{porcentaje}%</span>
       </div>
 
-      {/* Amounts */}
-      <div className={`grid gap-3 ml-2 ${gastosAsignados > 0 ? "grid-cols-3" : "grid-cols-2"}`}>
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.06em] text-text-secondary font-display mb-0.5">
-            Esta semana
-          </p>
-          <p className="font-numbers text-lg font-medium text-text-primary leading-tight">
-            {formatMoney(montoSemana)}
-          </p>
-        </div>
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.06em] text-text-secondary font-display mb-0.5">
-            Acumulado
-          </p>
-          <p className="font-numbers text-lg font-medium leading-tight" style={{ color }}>
-            {formatMoney(acumulado)}
-          </p>
-        </div>
-        {gastosAsignados > 0 && (
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.06em] text-text-secondary font-display mb-0.5">
-              Gastos
-            </p>
-            <p className="font-numbers text-lg font-medium leading-tight text-red-500">
-              -{formatMoney(gastosAsignados)}
-            </p>
-          </div>
-        )}
+      <div className={`grid gap-2 mt-2.5 ${gastosAsignados > 0 ? "grid-cols-3" : "grid-cols-2"}`}>
+        <Cifra label="Esta semana" valor={formatMoney(montoSemana)} />
+        <Cifra label="Acumulado" valor={formatMoney(acumulado)} />
+        {gastosAsignados > 0 && <Cifra label="Gastos" valor={`−${formatMoney(gastosAsignados)}`} negativo />}
       </div>
 
-      {/* Subtle fill indicator */}
-      <div className="mt-3 ml-2 h-1 bg-bg rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-700 ease-out"
-          style={{
-            width: `${porcentaje}%`,
-            backgroundColor: color,
-          }}
-        />
+      <div className="mt-2.5 h-1 bg-bg rounded-full overflow-hidden">
+        <div className="h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${porcentaje}%`, backgroundColor: color }} />
       </div>
+    </div>
+  );
+}
+
+function Cifra({ label, valor, negativo }: { label: string; valor: string; negativo?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[11px] uppercase tracking-[0.05em] text-text-secondary font-display font-semibold">{label}</p>
+      <p className={`font-numbers text-[17px] font-bold leading-tight whitespace-nowrap ${negativo ? "text-sale" : "text-text-primary"}`}>
+        {valor}
+      </p>
     </div>
   );
 }

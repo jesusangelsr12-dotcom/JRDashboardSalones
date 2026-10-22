@@ -152,7 +152,7 @@ export default function SalonConfigPage() {
       <div className="flex items-center gap-3 mb-8 pt-4">
         <button
           onClick={() => router.back()}
-          className="w-9 h-9 rounded-full bg-surface border border-border flex items-center justify-center active:scale-95 transition-transform"
+          className="w-[38px] h-[38px] rounded-full bg-surface border border-border flex items-center justify-center active:scale-95 transition-transform"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path
@@ -164,7 +164,7 @@ export default function SalonConfigPage() {
             />
           </svg>
         </button>
-        <h1 className="text-xl font-bold font-display text-text-primary">
+        <h1 className="font-brand text-[26px] font-extrabold tracking-[-0.03em] text-text-primary">
           Configuración
         </h1>
       </div>
@@ -184,7 +184,7 @@ export default function SalonConfigPage() {
               type="text"
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
-              className="w-full bg-bg border border-border rounded-[8px] px-3 py-2 text-[14px] font-display text-text-primary outline-none focus:border-text-secondary transition-colors"
+              className="w-full bg-bg border border-border rounded-[12px] px-3 py-2 text-[14px] font-display text-text-primary outline-none focus:border-rosa transition-colors"
             />
           </div>
 
@@ -216,23 +216,23 @@ export default function SalonConfigPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setDataSource("sheets")}
-                className={`flex-1 py-2 rounded-[8px] text-[12px] font-display font-medium border transition-colors ${
+                className={`flex-1 py-2 rounded-[12px] text-[12px] font-display font-medium border transition-colors ${
                   dataSource === "sheets"
                     ? "text-white border-transparent"
                     : "bg-bg border-border text-text-secondary"
                 }`}
-                style={dataSource === "sheets" ? { backgroundColor: color } : undefined}
+                style={dataSource === "sheets" ? { backgroundColor: "#1C0B14" } : undefined}
               >
                 Google Sheets
               </button>
               <button
                 onClick={() => setDataSource("neon")}
-                className={`flex-1 py-2 rounded-[8px] text-[12px] font-display font-medium border transition-colors ${
+                className={`flex-1 py-2 rounded-[12px] text-[12px] font-display font-medium border transition-colors ${
                   dataSource === "neon"
                     ? "text-white border-transparent"
                     : "bg-bg border-border text-text-secondary"
                 }`}
-                style={dataSource === "neon" ? { backgroundColor: color } : undefined}
+                style={dataSource === "neon" ? { backgroundColor: "#1C0B14" } : undefined}
               >
                 Base de datos (Neon)
               </button>
@@ -249,7 +249,7 @@ export default function SalonConfigPage() {
                 value={sheetId}
                 onChange={(e) => setSheetId(e.target.value)}
                 placeholder="1BxiM..."
-                className="w-full bg-bg border border-border rounded-[8px] px-3 py-2 text-[13px] font-mono text-text-primary placeholder:text-text-secondary/40 outline-none focus:border-text-secondary transition-colors"
+                className="w-full bg-bg border border-border rounded-[12px] px-3 py-2 text-[13px] font-mono text-text-primary placeholder:text-text-secondary/40 outline-none focus:border-rosa transition-colors"
               />
             </div>
           ) : (
@@ -262,7 +262,7 @@ export default function SalonConfigPage() {
                 value={neonSalonId}
                 onChange={(e) => setNeonSalonId(e.target.value)}
                 placeholder="fe431f09-608e-45e8-bd35-a355d3c0421d"
-                className="w-full bg-bg border border-border rounded-[8px] px-3 py-2 text-[13px] font-mono text-text-primary placeholder:text-text-secondary/40 outline-none focus:border-text-secondary transition-colors"
+                className="w-full bg-bg border border-border rounded-[12px] px-3 py-2 text-[13px] font-mono text-text-primary placeholder:text-text-secondary/40 outline-none focus:border-rosa transition-colors"
               />
               <p className="text-[11px] text-text-secondary/60 font-display mt-1">
                 ID del salón en la tabla &quot;salones&quot; de la base de datos Neon
@@ -282,7 +282,7 @@ export default function SalonConfigPage() {
                 step="0.1"
                 min="0"
                 max="100"
-                className="w-24 bg-bg border border-border rounded-[8px] px-3 py-2 text-[14px] font-mono text-text-primary outline-none focus:border-text-secondary transition-colors"
+                className="w-24 bg-bg border border-border rounded-[12px] px-3 py-2 text-[14px] font-mono text-text-primary outline-none focus:border-rosa transition-colors"
               />
               <span className="text-[12px] text-text-secondary font-mono">%</span>
             </div>
@@ -302,14 +302,14 @@ export default function SalonConfigPage() {
           <button
             onClick={addBolsa}
             className="text-[12px] font-display font-medium px-3 py-1 rounded-full"
-            style={{ backgroundColor: color + "14", color }}
+            style={{ backgroundColor: "#FFE3F0", color: "#D9007A" }}
           >
             + Agregar
           </button>
         </div>
 
         {totalPorcentaje !== 100 && bolsas.length > 0 && (
-          <p className="text-[11px] text-amber-600 font-mono mb-2">
+          <p className="text-[11px] text-aten font-mono mb-2">
             Los porcentajes suman {totalPorcentaje}% (deberían sumar 100%)
           </p>
         )}
@@ -334,7 +334,7 @@ export default function SalonConfigPage() {
                 />
                 <button
                   onClick={() => removeBolsa(i)}
-                  className="text-red-400 text-[18px] leading-none px-1"
+                  className="text-sale/70 text-[18px] leading-none px-1"
                 >
                   ×
                 </button>
@@ -352,7 +352,7 @@ export default function SalonConfigPage() {
                       onChange={(e) =>
                         updateBolsa(i, "porcentaje", Number(e.target.value))
                       }
-                      className="w-16 bg-bg border border-border rounded-[6px] px-2 py-1.5 text-[13px] font-mono text-text-primary outline-none"
+                      className="w-16 bg-bg border border-border rounded-[10px] px-2 py-1.5 text-[13px] font-mono text-text-primary outline-none"
                     />
                     <span className="text-[12px] text-text-secondary font-mono">%</span>
                   </div>
@@ -385,7 +385,7 @@ export default function SalonConfigPage() {
                 <select
                   value={bolsa.naturaleza}
                   onChange={(e) => updateBolsa(i, "naturaleza", e.target.value)}
-                  className="w-full bg-bg border border-border rounded-[6px] px-2 py-1.5 text-[12px] font-display text-text-primary outline-none"
+                  className="w-full bg-bg border border-border rounded-[10px] px-2 py-1.5 text-[12px] font-display text-text-primary outline-none"
                 >
                   {NATURALEZAS_BOLSA.map((n) => (
                     <option key={n.value} value={n.value}>{n.label}</option>
@@ -413,7 +413,7 @@ export default function SalonConfigPage() {
             <select
               value={bolsaDefaultGastosId || ""}
               onChange={(e) => setBolsaDefaultGastosId(e.target.value || null)}
-              className="w-full bg-bg border border-border rounded-[8px] px-3 py-2.5 text-[14px] font-display text-text-primary outline-none focus:border-text-secondary transition-colors"
+              className="w-full bg-bg border border-border rounded-[12px] px-3 py-2.5 text-[14px] font-display text-text-primary outline-none focus:border-rosa transition-colors"
             >
               <option value="">Sin asignar</option>
               {bolsas.map((b) => (
@@ -435,7 +435,7 @@ export default function SalonConfigPage() {
           <button
             onClick={addGastoFijo}
             className="text-[12px] font-display font-medium px-3 py-1 rounded-full"
-            style={{ backgroundColor: color + "14", color }}
+            style={{ backgroundColor: "#FFE3F0", color: "#D9007A" }}
           >
             + Agregar
           </button>
@@ -464,7 +464,7 @@ export default function SalonConfigPage() {
                       onChange={(e) =>
                         updateGastoFijo(i, "monto", Number(e.target.value))
                       }
-                      className="w-20 bg-bg border border-border rounded-[6px] px-2 py-1 text-[13px] font-mono text-text-primary outline-none"
+                      className="w-20 bg-bg border border-border rounded-[10px] px-2 py-1 text-[13px] font-mono text-text-primary outline-none"
                     />
                   </div>
                   <select
@@ -472,7 +472,7 @@ export default function SalonConfigPage() {
                     onChange={(e) =>
                       updateGastoFijo(i, "frecuencia", e.target.value)
                     }
-                    className="bg-bg border border-border rounded-[6px] px-2 py-1 text-[12px] font-display text-text-primary outline-none"
+                    className="bg-bg border border-border rounded-[10px] px-2 py-1 text-[12px] font-display text-text-primary outline-none"
                   >
                     <option value="mensual">Mensual</option>
                     <option value="semanal">Semanal</option>
@@ -482,7 +482,7 @@ export default function SalonConfigPage() {
                     onChange={(e) =>
                       updateGastoFijo(i, "categoria", e.target.value)
                     }
-                    className="bg-bg border border-border rounded-[6px] px-2 py-1 text-[12px] font-display text-text-primary outline-none"
+                    className="bg-bg border border-border rounded-[10px] px-2 py-1 text-[12px] font-display text-text-primary outline-none"
                   >
                     {CATEGORIAS_GASTO.map((c) => (
                       <option key={c.value} value={c.value}>{c.label}</option>
@@ -493,7 +493,7 @@ export default function SalonConfigPage() {
 
               <button
                 onClick={() => removeGastoFijo(i)}
-                className="text-red-400 text-[18px] leading-none px-1 flex-shrink-0"
+                className="text-sale/70 text-[18px] leading-none px-1 flex-shrink-0"
               >
                 ×
               </button>
@@ -506,8 +506,7 @@ export default function SalonConfigPage() {
       <button
         onClick={handleSave}
         disabled={saving}
-        className="w-full py-3.5 rounded-card text-[14px] font-display font-semibold text-white active:scale-[0.98] transition-all mb-4"
-        style={{ backgroundColor: color }}
+        className="w-full py-3.5 rounded-card text-[14.5px] font-display font-bold text-tinta bg-mandarina active:scale-[0.98] transition-all mb-4 disabled:opacity-40"
       >
         {saving ? "Guardando..." : saved ? "Guardado" : "Guardar cambios"}
       </button>
@@ -515,14 +514,14 @@ export default function SalonConfigPage() {
       {/* Delete */}
       <button
         onClick={() => setShowDelete(true)}
-        className="w-full py-3 rounded-card text-[14px] font-display font-medium text-red-500 border border-red-200 active:scale-[0.98] transition-transform"
+        className="w-full py-3 rounded-card text-[14px] font-display font-medium text-sale border border-sale/30 active:scale-[0.98] transition-transform"
       >
         Eliminar salón
       </button>
 
       {/* Delete confirmation */}
       <Modal open={showDelete} onClose={() => setShowDelete(false)}>
-        <h3 className="text-lg font-bold font-display text-text-primary mb-2">
+        <h3 className="font-brand text-[20px] font-extrabold tracking-[-0.025em] text-text-primary mb-2">
           Eliminar salón
         </h3>
         <p className="text-[13px] text-text-secondary mb-5">
@@ -540,7 +539,7 @@ export default function SalonConfigPage() {
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="flex-1 py-3 rounded-card bg-red-500 text-[14px] font-display font-semibold text-white active:scale-[0.98] transition-transform disabled:opacity-50"
+            className="flex-1 py-3 rounded-card bg-sale text-[14px] font-display font-semibold text-white active:scale-[0.98] transition-transform disabled:opacity-50"
           >
             {deleting ? "Eliminando..." : "Eliminar"}
           </button>
